@@ -6,3 +6,8 @@ import "database/sql"
 func OpenDBConnection(connectionString string) (*sql.DB, error) {
 	return sql.Open("postgres", connectionString)
 }
+
+// DbIsAvailable returns true if a DB is available
+func DbIsAvailable(db *sql.DB) bool {
+	return db.Ping() == nil // Ping() returns an error if db  is unavailable
+}

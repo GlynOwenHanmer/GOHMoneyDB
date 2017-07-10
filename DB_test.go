@@ -1,12 +1,12 @@
 package GOHMoneyDB
 
 import (
-	"database/sql"
 	"os"
 	"io"
 	"os/user"
 	"testing"
 	"errors"
+	"database/sql"
 )
 
 func Test_prepareTestDB(t *testing.T) {
@@ -37,3 +37,17 @@ func prepareTestDB() (*sql.DB, error) {
 	return OpenDBConnection(string(connectionString[0:bytesCount]))
 }
 
+func Test_isAvailable(t *testing.T) {
+	unavailableDb, _ := OpenDBConnection("INVALID CONNECTION STRING")
+	if DbIsAvailable(unavailableDb) {
+		t.Error("isAvailable returned true when it should have been false.")
+	}
+
+	availableDb, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error occured whilst prepping DB for test. Error: %s", err.Error())
+	}
+	if !DbIsAvailable(availableDb) {
+		t.Error("isAvailable returned false when it should have been true.")
+	}
+}
