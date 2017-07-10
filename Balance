@@ -1,0 +1,96 @@
+//package GOHMoneyDB
+//
+//import (
+//	"bytes"
+//	"database/sql"
+//	"fmt"
+//	"log"
+//	"time"
+//
+//	"bitbucket.org/glynny/GOHMoney"
+//
+//	_ "github.com/lib/pq"
+//)
+//
+//const (
+//	balanceQueryFields string = "date, balance"
+//)
+//
+//func GetBalanceAtDate(db *sql.DB, accountId int, date time.Time) GOHMoney.Balance {
+//	fmt.Println()
+//	var queryBuffer bytes.Buffer
+//	queryBuffer.WriteString("SELECT ")
+//	queryBuffer.WriteString(balanceQueryFields)
+//	queryBuffer.WriteString(" FROM balances WHERE account_id = ")
+//	queryBuffer.WriteString(fmt.Sprintf("%d", accountId))
+//	queryBuffer.WriteString(" AND date <= '")
+//	queryBuffer.WriteString(FormatDateString(date))
+//	queryBuffer.WriteString("' ORDER BY date DESC, id DESC LIMIT 1")
+//	row := db.QueryRow(queryBuffer.String())
+//	balance := GOHMoney.Balance{}
+//	err := row.Scan(&balance.Date, &balance.Amount)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	return balance
+//}
+//
+////Gets all available balance records for an account up to and including a given date
+//func GetBalanceHistoryUpToDate(db *sql.DB, accountId int, date time.Time) GOHMoney.Balances {
+//	var queryBuffer bytes.Buffer
+//	queryBuffer.WriteString("SELECT ")
+//	queryBuffer.WriteString(balanceQueryFields)
+//	queryBuffer.WriteString(" FROM balances WHERE account_id = ")
+//	queryBuffer.WriteString(fmt.Sprintf("%d", accountId))
+//	queryBuffer.WriteString(" AND date <= '")
+//	queryBuffer.WriteString(FormatDateString(date))
+//	queryBuffer.WriteString("' ORDER BY date DESC, id DESC")
+//	rows, err := db.Query(queryBuffer.String())
+//	if err != nil {
+//		log.Printf("Error parsing balance for Account: %+v\n", SelectAccountWithID(db, accountId))
+//		log.Printf("For time: %+v\n", date)
+//		log.Fatal(err)
+//	}
+//	defer rows.Close()
+//	balances := GOHMoney.Balances{}
+//	for rows.Next() {
+//		balance := GOHMoney.Balance{}
+//		err := rows.Scan(&balance.Date, &balance.Amount)
+//		if err != nil {
+//			log.Printf("Error parsing balance for Account: %+v\n", SelectAccountWithID(db, accountId))
+//			log.Printf("For time: %+v\n", date)
+//			log.Fatal(err)
+//		}
+//		balances = append(balances, balance)
+//	}
+//	err = rows.Err()
+//	if err != nil {
+//		log.Printf("Error parsing balance for Account: %+v\n", SelectAccountWithID(db, accountId))
+//		log.Printf("For time: %+v\n", date)
+//		log.Fatal(err)
+//	}
+//	return balances
+//}
+//
+////Gets total of all balances at a given date for open accounts
+//func GetBalancesTotalAtDate(db *sql.DB, date time.Time) GOHMoney.Balance {
+//	var queryBuffer bytes.Buffer
+//	// SELECT SUM(balance) FROM accounts a join (SELECT DISTINCT ON (account_id) * FROM balances b WHERE date <= $1 ORDER BY account_id ASC, date DESC) sq ON a.id = sq.account_id where a.is_open = true;
+//	queryBuffer.WriteString("SELECT SUM(balance) FROM accounts a join (SELECT DISTINCT ON (account_id) * FROM balances b WHERE date <= '")
+//	queryBuffer.WriteString(FormatDateString(date))
+//	queryBuffer.WriteString("' ORDER BY account_id ASC, date DESC) sq ON a.id = sq.account_id where a.is_open = true")
+//	row := db.QueryRow(queryBuffer.String())
+//	balance := GOHMoney.Balance{Date: date}
+//	var amount sql.NullFloat64
+//	err := row.Scan(&amount)
+//	if err != nil {
+//		log.Printf("Error calculating total for time: %+v\n", date)
+//		log.Fatal(err.Error())
+//	}
+//	if amount.Valid {
+//		balance.Amount = float32(amount.Float64)
+//	} else {
+//		balance.Amount = 0
+//	}
+//	return balance
+//}
