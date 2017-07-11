@@ -37,19 +37,6 @@ const (
 	DateClosedBeforeDateOpenedError = "Closed date is before opened date."
 )
 
-// NewBalanceFieldError is an error returned there is a fault with a field of a givem potential new Balance item.
-type NewBalanceFieldError string
-
-// A collection of possible NewBalanceFieldErrors
-const (
-	BalanceZeroDate = NewBalanceFieldError("Date of balance is zero.")
-)
-
-// Error ensures that NewBalanceFieldError adheres to the error interface.
-func (e NewBalanceFieldError) Error() string {
-	return string(e)
-}
-
 // BalancesError is an error type that can be returned when no Balance items are returned but there would have been Balance items expected to have returned.
 type BalancesError string
 
