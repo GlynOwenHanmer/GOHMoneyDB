@@ -54,7 +54,7 @@ func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
 
 // InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
 func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Balance, error) {
-	err := checkNewBalance(balance)
+	err := balance.Validate()
 	if err != nil {
 		return Balance{}, err
 	}
@@ -69,17 +69,9 @@ func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Bala
 func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMoney.Balance) (Balance, error) {
 	//Check that Balance actually belongs to account.
 	//Check that updates are:
-	//   A - Acceptable as Balance on own (checkNewBalance method?)
-	//   B - Acceptable as Balance as part of that account (No date conflicts, etc.) (Account.checkBalance method? Where dates are checked that they're in the right range.)
+	//   A - Acceptable as Balance on own (validateBalance method?)
+	//   B - Acceptable as Balance as part of that account (No date conflicts, etc.) (Account.validateBalance method? Where dates are checked that they're in the right range.)
 	return Balance{}, nil
-}
-
-// checkNewBalance checks the fields of a potential new balance and returns any logic errors that are present within it.
-func checkNewBalance(balance GOHMoney.Balance) error {
-	if balance.Date.IsZero() {
-		return BalanceZeroDate
-	}
-	return nil
 }
 
 // BalanceAtDate returns a Balance item representing the Balance of an account at the given time for the given account with the given DB.

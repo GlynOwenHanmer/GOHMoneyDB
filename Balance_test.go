@@ -75,8 +75,8 @@ func Test_BalanceInsert(t *testing.T) {
 	}
 	invalidBalance := GOHMoney.Balance{}
 	insertedBalance, err := dbAccount.InsertBalance(db, invalidBalance)
-	if err != BalanceZeroDate {
-		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", BalanceZeroDate, err)
+	if err != GOHMoney.BalanceZeroDate {
+		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", GOHMoney.BalanceZeroDate, err)
 	}
 	if !insertedBalance.Date.IsZero() {
 		t.Errorf("Inserted balance date should be zero but is: %s", insertedBalance.Date.String())
@@ -143,21 +143,6 @@ func Test_UpdateBalance(t *testing.T) {
 	updatedBalance, err := account.UpdateBalance(db,createdBalance,update)
 	_ = updatedBalance
 	t.Fail() // WIP so fail to disallow builds
-}
-
-
-func Test_checkNewBalance(t *testing.T) {
-	invalidBalance := GOHMoney.Balance{}
-	err := checkNewBalance(invalidBalance)
-	if err != BalanceZeroDate {
-		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", BalanceZeroDate, err)
-	}
-
-	validBalance := GOHMoney.Balance{Date:time.Now()}
-	err = checkNewBalance(validBalance)
-	if err != nil {
-		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", nil, err)
-	}
 }
 
 func Test_AccountBalanceAtDate(t *testing.T) {
