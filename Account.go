@@ -7,7 +7,6 @@ import (
 	_ "github.com/lib/pq"
 	"fmt"
 	"bytes"
-	"strings"
 )
 
 const (
@@ -80,7 +79,7 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 
 // CreateAccount created an Account entry within the DB and returns it, if successful, along with any errors that occur whilst attempting to create the Account.
 func CreateAccount(db *sql.DB, newAccount GOHMoney.Account) (Account, error) {
-	newAccountFieldErrors := checkNewAccount(newAccount)
+	newAccountFieldErrors := newAccount.Validate()
 	if newAccountFieldErrors != nil {
 		return Account{}, newAccountFieldErrors
 	}
@@ -92,23 +91,4 @@ func CreateAccount(db *sql.DB, newAccount GOHMoney.Account) (Account, error) {
 	createdAccount := Account{}
 	err := row.Scan(&createdAccount.Id, &createdAccount.Name, &createdAccount.DateOpened, &createdAccount.DateClosed)
 	return createdAccount, err
-}
-
-// checkNewAccount checks the state of an account to see if it is eligible to create a new account from. checkNewAccount returns a set of errors representing errors with different fields of te new account.
-func checkNewAccount(newAccount GOHMoney.Account) NewAccountFieldError {
-	var fieldErrorDescriptions []string
-	if len(strings.TrimSpace(newAccount.Name)) == 0 {
-		fieldErrorDescriptions = append(fieldErrorDescriptions, EmptyNameError)
-	}
-	if newAccount.DateOpened.IsZero() {
-		fieldErrorDescriptions = append(fieldErrorDescriptions, ZeroDateOpenedError)
-	}
-	if newAccount.DateClosed.Valid {
-		if newAccount.DateClosed.Time.IsZero() {
-			fieldErrorDescriptions = append(fieldErrorDescriptions, ZeroValidDateClosedError)
-		} else if newAccount.DateClosed.Time.Before(newAccount.DateOpened) {
-			fieldErrorDescriptions = append(fieldErrorDescriptions, DateClosedBeforeDateOpenedError)
-		}
-	}
-	return NewAccountFieldError(fieldErrorDescriptions)
 }
