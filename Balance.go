@@ -66,6 +66,14 @@ func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Bala
 	return insertedBalance, row.Scan(&insertedBalance.id, &insertedBalance.Date, &insertedBalance.Amount)
 }
 
+func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMoney.Balance) (Balance, error) {
+	//Check that Balance actually belongs to account.
+	//Check that updates are:
+	//   A - Acceptable as Balance on own (checkNewBalance method?)
+	//   B - Acceptable as Balance as part of that account (No date conflicts, etc.) (Account.checkBalance method? Where dates are checked that they're in the right range.)
+	return Balance{}, nil
+}
+
 // checkNewBalance checks the fields of a potential new balance and returns any logic errors that are present within it.
 func checkNewBalance(balance GOHMoney.Balance) error {
 	if balance.Date.IsZero() {

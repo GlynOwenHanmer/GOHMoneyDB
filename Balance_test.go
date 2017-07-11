@@ -121,6 +121,31 @@ func Test_BalanceInsert(t *testing.T) {
 	}
 }
 
+func Test_UpdateBalance(t *testing.T) {
+	timeStart := time.Now()
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db,newTestAccount())
+	newBalance := GOHMoney.Balance{
+		Date:timeStart.AddDate(500, 1, 2),
+		Amount:0,
+	}
+	createdBalance, err := account.InsertBalance(db,newBalance)
+	if err != nil {
+		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+	}
+	update := GOHMoney.Balance{
+		Date:timeStart,
+		Amount:100,
+	}
+	updatedBalance, err := account.UpdateBalance(db,createdBalance,update)
+	_ = updatedBalance
+	t.Fail() // WIP so fail to disallow builds
+}
+
+
 func Test_checkNewBalance(t *testing.T) {
 	invalidBalance := GOHMoney.Balance{}
 	err := checkNewBalance(invalidBalance)
