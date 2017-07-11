@@ -108,60 +108,6 @@ func Test_SelectAccountWithId(t *testing.T) {
 	}
 }
 
-func Test_checkNewAccount(t *testing.T) {
-	testSets := []struct{
-		insertedAccount GOHMoney.Account
-		NewAccountFieldError
-	}{
-		{
-			insertedAccount: GOHMoney.Account{},
-			NewAccountFieldError: NewAccountFieldError{EmptyNameError, ZeroDateOpenedError},
-		},
-		{
-			insertedAccount: GOHMoney.Account{},
-			NewAccountFieldError: NewAccountFieldError{EmptyNameError, ZeroDateOpenedError},
-		},
-		{
-			insertedAccount: GOHMoney.Account{
-				Name:"TEST_ACCOUNT",
-			},
-			NewAccountFieldError: NewAccountFieldError{ZeroDateOpenedError},
-		},
-		{
-			insertedAccount: GOHMoney.Account{
-				DateOpened: time.Date(2000,1,1,1,1,1,1,time.UTC),
-			},
-			NewAccountFieldError: NewAccountFieldError{EmptyNameError},
-		},
-		{
-			insertedAccount: GOHMoney.Account{
-				Name:"TEST_ACCOUNT",
-				DateClosed: pq.NullTime{Valid:true},
-			},
-			NewAccountFieldError: NewAccountFieldError{ZeroDateOpenedError,ZeroValidDateClosedError},
-		},
-		{
-			insertedAccount: GOHMoney.Account{
-				Name:"TEST_ACCOUNT",
-				DateOpened: time.Date(2000,1,1,1,1,1,1,time.UTC),
-				DateClosed: pq.NullTime{Valid:true, Time:time.Date(1999,1,1,1,1,1,1,time.UTC)},
-			},
-			NewAccountFieldError: NewAccountFieldError{DateClosedBeforeDateOpenedError},
-		},
-		{
-			insertedAccount: newTestAccount(),
-			NewAccountFieldError: nil,
-		},
-	}
-	for _, testSet := range testSets {
-		actual := checkNewAccount(testSet.insertedAccount)
-		expected := testSet.NewAccountFieldError
-		if !stringSlicesMatch(expected, actual) {
-			t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s\nInserted Account: %s", expected, actual, testSet.insertedAccount)
-		}
-	}
-}
-
 func Test_CreateAccount(t *testing.T) {
 	testSets := []struct{
 		insertedAccount, createdAccount GOHMoney.Account
@@ -170,7 +116,7 @@ func Test_CreateAccount(t *testing.T) {
 		{
 			insertedAccount: GOHMoney.Account{},
 			createdAccount: GOHMoney.Account{},
-			error:          NewAccountFieldError{},
+			error:          GOHMoney.AccountFieldError{},
 		},
 		{
 			insertedAccount: newTestAccount(),
@@ -215,8 +161,8 @@ func Test_CreateAccount(t *testing.T) {
 		if testSet.error == nil && err != nil || testSet.error != nil && err == nil {
 			t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
 		}
-		if _, testSetErrIsNewAccountFieldError := testSet.error.(NewAccountFieldError); testSetErrIsNewAccountFieldError {
-			if _, actualErrorIsNewAccountFieldError := err.(NewAccountFieldError); !actualErrorIsNewAccountFieldError {
+		if _, testSetErrIsNewAccountFieldError := testSet.error.(GOHMoney.AccountFieldError); testSetErrIsNewAccountFieldError {
+			if _, actualErrorIsNewAccountFieldError := err.(GOHMoney.AccountFieldError); !actualErrorIsNewAccountFieldError {
 				t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
 			}
 		}
@@ -225,18 +171,6 @@ func Test_CreateAccount(t *testing.T) {
 			t.Errorf("Unexpected created account name:\nExpected: %s\nActual  : %s", testSet.createdAccount.Name, actualCreatedAccount.Name)
 		}
 	}
-}
-
-func stringSlicesMatch(array1, array2 []string) bool {
-	if len(array1) != len(array2) {
-		return false
-	}
-	for i := 0; i < len(array1); i++ {
-		if array1[i] != array2[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func newTestAccount() GOHMoney.Account {
