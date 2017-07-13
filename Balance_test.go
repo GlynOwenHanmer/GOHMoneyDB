@@ -18,10 +18,10 @@ func Test_BalancesForInvalidAccountId(t *testing.T) {
 	for _, invalidId := range invalidIds {
 		balances, err := selectBalancesForAccount(db, invalidId)
 		if err != nil {
-			t.Errorf("account id: %d, expected nil error but got: %s", invalidId, err.Error())
+			t.Errorf("account Id: %d, expected nil error but got: %s", invalidId, err.Error())
 		}
 		if len(balances) != 0 {
-			t.Errorf("account id: %d, expected no balances but got: %s", invalidId, balances)
+			t.Errorf("account Id: %d, expected no balances but got: %s", invalidId, balances)
 		}
 	}
 }
@@ -35,17 +35,17 @@ func Test_BalancesForValidAccountId(t *testing.T) {
 	}
 	balances, err := selectBalancesForAccount(db, validId)
 	if err != nil {
-		t.Errorf("id: %d, expected nil error but got: %s", validId, err.Error())
+		t.Errorf("Id: %d, expected nil error but got: %s", validId, err.Error())
 	}
 	minBalances := 91
 	if len(balances) < minBalances {
-		t.Errorf("account id: %d, expected at least %d balances but got: %d", validId, minBalances, len(balances))
+		t.Errorf("account Id: %d, expected at least %d balances but got: %d", validId, minBalances, len(balances))
 		return
 	}
 	expectedAmount := float32(636.42)
 	actualAmount := balances[0].Amount
 	if actualAmount != expectedAmount {
-		t.Errorf("account id: %d, first balance, expected balance amount of %f but got %f", validId, expectedAmount, actualAmount)
+		t.Errorf("account Id: %d, first balance, expected balance amount of %f but got %f", validId, expectedAmount, actualAmount)
 	}
 	expectedDate, err := ParseDateString("2016-06-17")
 	if err != nil {
@@ -53,7 +53,7 @@ func Test_BalancesForValidAccountId(t *testing.T) {
 	}
 	actualDate := balances[0].Date
 	if !expectedDate.Equal(actualDate) {
-		t.Errorf("account id: %d, first balance, expected date of %s but got %s", validId, formatDateString(expectedDate), formatDateString(actualDate))
+		t.Errorf("account Id: %d, first balance, expected date of %s but got %s", validId, formatDateString(expectedDate), formatDateString(actualDate))
 	}
 }
 
@@ -66,7 +66,7 @@ func Test_BalanceInsert(t *testing.T) {
 	}
 	account, err := SelectAccountWithID(db, accountId)
 	if err != nil {
-		t.Errorf("Error selecting account with id %d for testing: %s", accountId, err.Error())
+		t.Errorf("Error selecting account with Id %d for testing: %s", accountId, err.Error())
 	}
 	dbAccount := Account(account)
 	startingBalances, err := dbAccount.Balances(db)
@@ -84,8 +84,8 @@ func Test_BalanceInsert(t *testing.T) {
 	if insertedBalance.Amount != 0 {
 		t.Errorf("Inserted balance amount should be %f but is %f", 0, insertedBalance.Amount)
 	}
-	if insertedBalance.id != 0 {
-		t.Errorf("Inserted balance id should be %d but is %d", 0, insertedBalance.id)
+	if insertedBalance.Id != 0 {
+		t.Errorf("Inserted balance Id should be %d but is %d", 0, insertedBalance.Id)
 	}
 	balancesAfterTest, err := dbAccount.Balances(db)
 	if err != nil {
@@ -227,7 +227,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 			insertedBalances[1],
 		},
 		{
-			// Multiple balances match date. Should return one with highest id (latest inserted)
+			// Multiple balances match date. Should return one with highest Id (latest inserted)
 			balances[2].Date,
 			nil,
 			insertedBalances[3],

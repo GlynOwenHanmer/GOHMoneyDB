@@ -65,7 +65,7 @@ func SelectAccountsOpen(db *sql.DB) (Accounts, error) {
 	return openAccounts, err
 }
 
-// SelectAccountWithId returns the Account from the DB with the given id value along with any error that occurs whilst attempting to retrieve the Account.
+// SelectAccountWithId returns the Account from the DB with the given Id value along with any error that occurs whilst attempting to retrieve the Account.
 func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 	queryString := fmt.Sprintf("SELECT " + selectFields + " FROM accounts WHERE id = %d;", id)
 	row := db.QueryRow(queryString)
