@@ -47,7 +47,7 @@ func checkAccountsSortedByIdAscending(accounts Accounts, t *testing.T) {
 		switch {
 		case account.Id > nextAccount.Id:
 			var message bytes.Buffer
-			fmt.Fprintf(&message, "Accounts not returned sorted by id. Id %d appears before %d.\n", account.Id, nextAccount.Id)
+			fmt.Fprintf(&message, "Accounts not returned sorted by Id. Id %d appears before %d.\n", account.Id, nextAccount.Id)
 			fmt.Fprintf(&message, "accounts[%d]: %s", i, account)
 			fmt.Fprintf(&message, "accounts[%d]: %s", i+1, nextAccount)
 			t.Errorf(message.String())
@@ -100,7 +100,7 @@ func Test_SelectAccountWithId(t *testing.T) {
 			t.Errorf("Unexpected errors\nExpected: %v\nActual  : %v", testSet.expectedError, err)
 		}
 		if testSet.expectedAccount.Id != account.Id {
-			t.Errorf("Unexpected Account id\nExpected: %d\nActual  : %d", testSet.expectedAccount.Id, account.Id)
+			t.Errorf("Unexpected Account Id\nExpected: %d\nActual  : %d", testSet.expectedAccount.Id, account.Id)
 		}
 		if testSet.expectedAccount.Name != account.Name {
 			t.Errorf("Unexpected Account name\nExpected: %s\nActual  : %s", testSet.expectedAccount.Name, account.Name)

@@ -16,7 +16,7 @@ const (
 // Balance holds logic for an Account item that is held within a GOHMoney database.
 type Balance struct {
 	GOHMoney.Balance
-	id uint
+	Id uint `json:"id"`
 }
 
 // Balanes holds multiple Balance items
@@ -27,14 +27,14 @@ func (account Account) Balances(db *sql.DB) (Balances, error) {
 	return selectBalancesForAccount(db, account.Id)
 }
 
-// selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account id number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
+// selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account Id number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
 func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
 	var queryBuffer bytes.Buffer
 	queryBuffer.WriteString("SELECT ")
 	queryBuffer.WriteString(balanceSelectFields)
 	queryBuffer.WriteString(" FROM balances WHERE account_id = ")
 	queryBuffer.WriteString(fmt.Sprintf("%d", accountId))
-	queryBuffer.WriteString(" ORDER BY date ASC, id ASC")
+	queryBuffer.WriteString(" ORDER BY date ASC, Id ASC")
 	rows, err := db.Query(queryBuffer.String())
 	if err != nil {
 		return Balances{}, err
@@ -43,7 +43,7 @@ func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
 	balances := Balances{}
 	for rows.Next() {
 		balance := Balance{}
-		err := rows.Scan(&balance.id, &balance.Date, &balance.Amount)
+		err := rows.Scan(&balance.Id, &balance.Date, &balance.Amount)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Bala
 	fmt.Fprintf(&query, `RETURNING %s;`, balanceSelectFields)
 	row := db.QueryRow(query.String(), account.Id, balance.Date, balance.Amount)
 	var insertedBalance Balance
-	return insertedBalance, row.Scan(&insertedBalance.id, &insertedBalance.Date, &insertedBalance.Amount)
+	return insertedBalance, row.Scan(&insertedBalance.Id, &insertedBalance.Date, &insertedBalance.Amount)
 }
 
 // BalanceAtDate returns a Balance item representing the Balance of an account at the given time for the given account with the given DB.
@@ -76,7 +76,7 @@ func (account Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error
 	fmt.Fprintf(&query, `ORDER BY date DESC, id DESC LIMIT 1;`, )
 	row := db.QueryRow(query.String())
 	var balance Balance
-	err := row.Scan(&balance.id, &balance.Date, &balance.Amount)
+	err := row.Scan(&balance.Id, &balance.Date, &balance.Amount)
 	if err == sql.ErrNoRows {
 		err = NoBalances
 	}
