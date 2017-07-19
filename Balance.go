@@ -71,10 +71,10 @@ func (account Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `SELECT %s`, balanceSelectFields)
 	fmt.Fprint(&query, ` FROM balances `)
-	fmt.Fprintf(&query, `WHERE account_id = %d`, account.Id)
-	fmt.Fprintf(&query, ` AND date <= '%s' `, formatDateString(time))
+	fmt.Fprintf(&query, `WHERE account_id = $1`)
+	fmt.Fprintf(&query, ` AND date <= $2 `)
 	fmt.Fprintf(&query, `ORDER BY date DESC, id DESC LIMIT 1;`, )
-	row := db.QueryRow(query.String())
+	row := db.QueryRow(query.String(), account.Id, time)
 	var balance Balance
 	err := row.Scan(&balance.Id, &balance.Date, &balance.Amount)
 	if err == sql.ErrNoRows {

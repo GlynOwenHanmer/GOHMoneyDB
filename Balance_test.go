@@ -53,13 +53,13 @@ func Test_BalancesForValidAccountId(t *testing.T) {
 	if actualAmount != expectedAmount {
 		t.Errorf("account Id: %d, first balance, expected balance amount of %f but got %f", validId, expectedAmount, actualAmount)
 	}
-	expectedDate, err := ParseDateString("2016-06-17")
+	expectedDate, err := parseDateString("2016-06-17")
 	if err != nil {
 		t.Fatalf("Error parsing date string for use in tests. Error: %s", err.Error())
 	}
 	actualDate := balances[0].Date
 	if !expectedDate.Equal(actualDate) {
-		t.Errorf("account Id: %d, first balance, expected date of %s but got %s", validId, formatDateString(expectedDate), formatDateString(actualDate))
+		t.Errorf("account Id: %d, first balance, expected date of %s but got %s", validId, expectedDate, actualDate)
 	}
 }
 
