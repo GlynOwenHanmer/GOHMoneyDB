@@ -126,26 +126,54 @@ func Test_CreateAccount(t *testing.T) {
 		{
 			insertedAccount: GOHMoney.Account{
 				Name:"TEST_ACCOUNT",
-				DateOpened:time.Now(),
-				DateClosed:pq.NullTime{Valid:false},
+				TimeRange:GOHMoney.TimeRange{
+					Start:pq.NullTime{
+						Valid:true,
+						Time:time.Now(),
+					},
+					End:pq.NullTime{
+						Valid:false,
+					},
+				},
 			},
 			createdAccount: GOHMoney.Account{
 				Name:"TEST_ACCOUNT",
-				DateOpened:time.Now(),
-				DateClosed:pq.NullTime{Valid:false},
+				TimeRange:GOHMoney.TimeRange{
+					Start:pq.NullTime{
+						Valid:true,
+						Time:time.Now(),
+					},
+					End:pq.NullTime{
+						Valid:false,
+					},
+				},
 			},
 			error:          nil,
 		},
 		{
 			insertedAccount: GOHMoney.Account{
 				Name:"Account With'Apostrophe",
-				DateOpened:time.Now(),
-				DateClosed:pq.NullTime{Valid:false},
+				TimeRange:GOHMoney.TimeRange{
+					Start:pq.NullTime{
+						Valid:true,
+						Time:time.Now(),
+					},
+					End:pq.NullTime{
+						Valid:false,
+					},
+				},
 			},
 			createdAccount: GOHMoney.Account{
 				Name:"Account With'Apostrophe",
-				DateOpened:time.Now(),
-				DateClosed:pq.NullTime{Valid:false},
+				TimeRange:GOHMoney.TimeRange{
+					Start:pq.NullTime{
+						Valid:true,
+						Time:time.Now(),
+					},
+					End:pq.NullTime{
+						Valid:false,
+					},
+				},
 			},
 			error:          nil,
 		},
@@ -176,8 +204,16 @@ func Test_CreateAccount(t *testing.T) {
 func newTestAccount() GOHMoney.Account {
 	return GOHMoney.Account{
 		Name:       "TEST_ACCOUNT",
-		DateOpened: time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
-		DateClosed: pq.NullTime{Valid: true, Time: time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC)},
+		TimeRange:GOHMoney.TimeRange{
+			Start:pq.NullTime{
+				Valid: true,
+				Time: time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
+			},
+			End:pq.NullTime{
+				Valid: true,
+				Time: time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
+			},
+		},
 	}
 }
 

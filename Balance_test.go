@@ -6,6 +6,7 @@ import (
 	"time"
 	"bytes"
 	"fmt"
+	"database/sql"
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
@@ -42,18 +43,23 @@ func Test_BalancesForValidAccountId(t *testing.T) {
 		t.Errorf("account Id: %d, expected at least %d balances but got: %d", validId, minBalances, len(balances))
 		return
 	}
+	expectedId := uint(1)
+	actualId := balances[0].Id
+	if expectedId != actualId {
+		t.Errorf(`Unexpected Balance Id.\nExpected: %d\nActual:  %d`, expectedId, actualId)
+	}
 	expectedAmount := float32(636.42)
 	actualAmount := balances[0].Amount
 	if actualAmount != expectedAmount {
 		t.Errorf("account Id: %d, first balance, expected balance amount of %f but got %f", validId, expectedAmount, actualAmount)
 	}
-	expectedDate, err := ParseDateString("2016-06-17")
+	expectedDate, err := parseDateString("2016-06-17")
 	if err != nil {
 		t.Fatalf("Error parsing date string for use in tests. Error: %s", err.Error())
 	}
 	actualDate := balances[0].Date
 	if !expectedDate.Equal(actualDate) {
-		t.Errorf("account Id: %d, first balance, expected date of %s but got %s", validId, formatDateString(expectedDate), formatDateString(actualDate))
+		t.Errorf("account Id: %d, first balance, expected date of %s but got %s", validId, expectedDate, actualDate)
 	}
 }
 
@@ -64,6 +70,7 @@ func Test_BalanceInsert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to open DB connection. Error: %s", err)
 	}
+	initialLastId := getHighestBalanceId(db, t)
 	account, err := SelectAccountWithID(db, accountId)
 	if err != nil {
 		t.Errorf("Error selecting account with Id %d for testing: %s", accountId, err.Error())
@@ -77,6 +84,9 @@ func Test_BalanceInsert(t *testing.T) {
 	insertedBalance, err := dbAccount.InsertBalance(db, invalidBalance)
 	if err != GOHMoney.BalanceZeroDate {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", GOHMoney.BalanceZeroDate, err)
+	}
+	if insertedBalance.Id != 0 {
+		t.Errorf("Expected uninitialised Balance id of 0, got %d", insertedBalance.Id)
 	}
 	if !insertedBalance.Date.IsZero() {
 		t.Errorf("Inserted balance date should be zero but is: %s", insertedBalance.Date.String())
@@ -94,8 +104,8 @@ func Test_BalanceInsert(t *testing.T) {
 	if len(startingBalances) != len(balancesAfterTest) {
 		t.Errorf("Number of balances changed during test.\nBefore: %d\nAfter : %d", len(startingBalances), len(balancesAfterTest))
 	}
-	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1,time.UTC)
-	validBalance := GOHMoney.Balance{Date:validDate, Amount:1234.56}
+	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC)
+	validBalance := GOHMoney.Balance{Date: validDate, Amount: 1234.56}
 	startingBalances, err = dbAccount.Balances(db)
 	if err != nil {
 		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
@@ -103,6 +113,9 @@ func Test_BalanceInsert(t *testing.T) {
 	insertedBalance, err = dbAccount.InsertBalance(db, validBalance)
 	if err != nil {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", nil, err)
+	}
+	if insertedBalance.Id != initialLastId+1 {
+		t.Errorf("Expected Id to incremement by 1.\nInitial last Id: %d\nInserted Balance Id: %d", initialLastId, insertedBalance.Id)
 	}
 	if !insertedBalance.Date.Equal(validDate.Truncate(time.Hour * 24)) {
 		t.Errorf("Inserted balance date should be %s but is %s", validDate, insertedBalance.Date.String())
@@ -120,6 +133,27 @@ func Test_BalanceInsert(t *testing.T) {
 		t.Errorf("Number of balances should changed by %d but changed by %d", expectedDiff, balancesCountDiff)
 	}
 }
+
+func getHighestBalanceId(db *sql.DB, t *testing.T) uint {
+	initialLastId := uint(0)
+	allAccounts, err := SelectAccounts(db)
+	if err != nil {
+		t.Fatalf("Error selecting all Balances for testing: %s", err.Error())
+	}
+	for _, account := range allAccounts {
+		balances, err := selectBalancesForAccount(db, account.Id)
+		if err != nil {
+			t.Fatalf("Error selecting balances for testing: %s", err.Error())
+		}
+		for _, balance := range balances {
+			if balance.Id > initialLastId {
+				initialLastId = balance.Id
+			}
+		}
+	}
+	return initialLastId
+}
+
 
 func Test_UpdateBalance(t *testing.T) {
 	timeStart := time.Now()
@@ -248,7 +282,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 			t.Error(message)
 		}
 		if balance != testSet.expectedBalance {
-			message := fmt.Sprintf("Unexpected balance.\nExpected: %s\nActual  : %s", expectedBalance, balance)
+			message := fmt.Sprintf("Unexpected balance.\nExpected: %s\nActual  : %s", testSet.expectedBalance, balance)
 			message += fmt.Sprintf("\nFor time: %v", testSet.Time)
 			t.Error(message)
 		}
