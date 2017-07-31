@@ -24,6 +24,28 @@ type Account struct {
 // Accounts holds multiple Account items.
 type Accounts []Account
 
+// ValidateBalance validates a Balance against an Account and returns any errors that are encountered along the way.
+// ValidateBalance will return any error that is present with the Balance itself, the Balance's Date in reference to the Account's TimeRange and also check that the Account is the valid owner of the Balance.
+func (account Account) ValidateBalance(db *sql.DB, balance Balance) error {
+	err := account.Account.ValidateBalance(balance.Balance)
+	if err != nil {
+		return err
+	}
+	balances, err := selectBalancesForAccount(db, account.Id)
+	if err != nil {
+		return err
+	}
+	for _, accountBalance := range balances {
+		if accountBalance.Id == balance.Id {
+			return nil
+		}
+	}
+	return InvalidAccountBalanceError{
+		AccountId:account.Id,
+		BalanceId:balance.Id,
+	}
+}
+
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors occured whilst attempting to retrieve the Accounts.
 func SelectAccounts(db *sql.DB) (Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts ORDER BY id ASC;"

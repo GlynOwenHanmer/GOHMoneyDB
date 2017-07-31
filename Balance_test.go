@@ -154,29 +154,56 @@ func getHighestBalanceId(db *sql.DB, t *testing.T) uint {
 	return initialLastId
 }
 
-
-func Test_UpdateBalance(t *testing.T) {
-	timeStart := time.Now()
+func TestAccount_ValidateBalance(t *testing.T) {
 	db, err := prepareTestDB()
 	if err != nil {
 		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
 	}
 	account, err := CreateAccount(db,newTestAccount())
-	newBalance := GOHMoney.Balance{
-		Date:timeStart.AddDate(500, 1, 2),
-		Amount:0,
-	}
-	createdBalance, err := account.InsertBalance(db,newBalance)
 	if err != nil {
-		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	update := GOHMoney.Balance{
-		Date:timeStart,
-		Amount:100,
+	validBalance, err := account.InsertBalance(db, GOHMoney.Balance{Date:account.Start.Time.AddDate(0,0,1)})
+	if err != nil {
+		t.Fatalf(`Error inserting new balance for testing. Error :%s`, err)
 	}
-	updatedBalance, err := account.UpdateBalance(db,createdBalance,update)
-	_ = updatedBalance
-	t.Fail() // WIP so fail to disallow builds
+	outOfDateRange := Balance{
+		Id:account.Id,
+		Balance:GOHMoney.Balance{
+			Date:time.Date(1,1,1,1,1,1,1,time.UTC),
+		},
+	}
+	balanceWithWrongOwner := Balance{
+		Id:account.Id-1,
+		Balance:validBalance.Balance,
+	}
+	testSets := []struct{
+		account *Account
+		balance Balance
+		error
+	}{
+		{
+			account:account,
+			balance:validBalance,
+			error:nil,
+		},
+		{
+			account:account,
+			balance:outOfDateRange,
+			error:account.Account.ValidateBalance(outOfDateRange.Balance),
+		},
+		{
+			account:account,
+			balance:balanceWithWrongOwner,
+			error:InvalidAccountBalanceError{AccountId:account.Id, BalanceId:balanceWithWrongOwner.Id},
+		},
+	}
+	for _, testSet := range testSets {
+		err := testSet.account.ValidateBalance(db, testSet.balance)
+		if err != testSet.error {
+			t.Fatalf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", testSet.error, err)
+		}
+	}
 }
 
 func Test_AccountBalanceAtDate(t *testing.T) {
