@@ -23,7 +23,6 @@ func (e BalancesError) Error() string {
 // A collection of possible BalancesErrors
 const (
 	NoBalances = BalancesError("No balances exist.")
-	BalanceIllegalOwner = BalancesError("Balance")
 )
 
 // InvalidAccountBalanceError is an error type used to describe when a mistmatch of logical Account and Balance occurs.

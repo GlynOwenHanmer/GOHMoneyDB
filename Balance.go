@@ -54,7 +54,7 @@ func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
 
 // InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
 func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Balance, error) {
-	err := balance.Validate()
+	err := account.Account.ValidateBalance(balance)
 	if err != nil {
 		return Balance{}, err
 	}
@@ -67,6 +67,10 @@ func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Bala
 }
 
 func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMoney.Balance) (Balance, error) {
+	err := account.ValidateBalance(db,original)
+	if err != nil {
+		return Balance{}, err
+	}
 	//Check that Balance actually belongs to account.
 	//Check that updates are:
 	//   A - Acceptable as Balance on own (validateBalance method?)

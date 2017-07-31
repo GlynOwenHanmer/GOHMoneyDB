@@ -123,6 +123,10 @@ func Test_BalanceInsert(t *testing.T) {
 	if insertedBalance.Amount != validBalance.Amount {
 		t.Errorf("Inserted balance amount should be %f but is %f", validBalance.Amount, insertedBalance.Amount)
 	}
+	err = dbAccount.ValidateBalance(db, insertedBalance)
+	if err != nil {
+		t.Errorf("Expected inserted balance to be valid against account.\nError: %s\nAccount: %s\nBalance: %s", err, dbAccount, insertedBalance)
+	}
 	balancesAfterTest, err = dbAccount.Balances(db)
 	if err != nil {
 		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
@@ -204,6 +208,53 @@ func TestAccount_ValidateBalance(t *testing.T) {
 			t.Fatalf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", testSet.error, err)
 		}
 	}
+}
+
+func Test_UpdateBalance_WrongAccount(t *testing.T) {
+	timeStart := time.Now()
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account0, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	account1, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	newBalance := GOHMoney.Balance{
+		Date:account0.Start.Time,
+		Amount:0,
+	}
+	createdBalance0, err := account0.InsertBalance(db,newBalance)
+	if err != nil {
+		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+	}
+	update := GOHMoney.Balance{
+		Date:timeStart,
+		Amount:100,
+	}
+	updatedBalance, err := account1.UpdateBalance(db, createdBalance0,update)
+	expectedError := InvalidAccountBalanceError{AccountId:account1.Id, BalanceId:createdBalance0.Id}
+	if err != expectedError {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
+	}
+	expectedBalance := Balance{}
+	if updatedBalance != expectedBalance {
+		t.Errorf("Unexpected Balance.\n\tExpected: %s\n\tActual  : %s", expectedBalance, updatedBalance)
+	}
+}
+
+func Test_UpdateBalance_ValidBalance(t *testing.T) {
+	t.Fail()
+	//if updatedBalance.Id != createdBalance0.Id {
+	//	t.Errorf("Balance Id changed when updating Balance\n\tOriginal: %d\n\tFinal   : %d", createdBalance0.Id, updatedBalance.Id)
+	//}
+	//if updatedBalance.Balance != update {
+	//	t.Fail()
+	//}
 }
 
 func Test_AccountBalanceAtDate(t *testing.T) {
