@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"database/sql"
+	"errors"
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
@@ -123,6 +124,10 @@ func Test_BalanceInsert(t *testing.T) {
 	if insertedBalance.Amount != validBalance.Amount {
 		t.Errorf("Inserted balance amount should be %f but is %f", validBalance.Amount, insertedBalance.Amount)
 	}
+	err = dbAccount.ValidateBalance(db, insertedBalance)
+	if err != nil {
+		t.Errorf("Expected inserted balance to be valid against account.\nError: %s\nAccount: %s\nBalance: %s", err, dbAccount, insertedBalance)
+	}
 	balancesAfterTest, err = dbAccount.Balances(db)
 	if err != nil {
 		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
@@ -152,6 +157,180 @@ func getHighestBalanceId(db *sql.DB, t *testing.T) uint {
 		}
 	}
 	return initialLastId
+}
+
+func TestAccount_ValidateBalance(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	validBalance, err := account.InsertBalance(db, GOHMoney.Balance{Date:account.Start.Time.AddDate(0,0,1)})
+	if err != nil {
+		t.Fatalf(`Error inserting new balance for testing. Error :%s`, err)
+	}
+	outOfDateRange := Balance{
+		Id:account.Id,
+		Balance:GOHMoney.Balance{
+			Date:time.Date(1,1,1,1,1,1,1,time.UTC),
+		},
+	}
+	balanceWithWrongOwner := Balance{
+		Id:account.Id-1,
+		Balance:validBalance.Balance,
+	}
+	testSets := []struct{
+		account *Account
+		balance Balance
+		error
+	}{
+		{
+			account:account,
+			balance:validBalance,
+			error:nil,
+		},
+		{
+			account:account,
+			balance:outOfDateRange,
+			error:account.Account.ValidateBalance(outOfDateRange.Balance),
+		},
+		{
+			account:account,
+			balance:balanceWithWrongOwner,
+			error:InvalidAccountBalanceError{AccountId:account.Id, BalanceId:balanceWithWrongOwner.Id},
+		},
+	}
+	for _, testSet := range testSets {
+		err := testSet.account.ValidateBalance(db, testSet.balance)
+		if err != testSet.error {
+			t.Fatalf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", testSet.error, err)
+		}
+	}
+}
+
+func Test_UpdateBalance_WrongAccount(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account0, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	account1, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	newBalance := GOHMoney.Balance{
+		Date:account0.Start.Time,
+		Amount:0,
+	}
+	createdBalance0, err := account0.InsertBalance(db,newBalance)
+	if err != nil {
+		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+	}
+	update := GOHMoney.Balance{
+		Date:time.Now(),
+		Amount:100,
+	}
+	updatedBalance, err := account1.UpdateBalance(db, createdBalance0,update)
+	expectedError := InvalidAccountBalanceError{AccountId:account1.Id, BalanceId:createdBalance0.Id}
+	if err != expectedError {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
+	}
+	expectedBalance := Balance{}
+	if updatedBalance != expectedBalance {
+		t.Errorf("Unexpected Balance.\n\tExpected: %s\n\tActual  : %s", expectedBalance, updatedBalance)
+	}
+}
+
+func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	newBalance := GOHMoney.Balance{ Date: account.Start.Time }
+	createdBalance, err := account.InsertBalance(db,newBalance)
+	if err != nil {
+		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+	}
+	update := GOHMoney.Balance{}
+	updatedBalance, err := account.UpdateBalance(db, createdBalance,update)
+	expectedError := errors.New(`Update Balance is not valid: ` + GOHMoney.BalanceZeroDate.Error())
+	if err.Error() != expectedError.Error() {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
+	}
+	expectedBalance := Balance{}
+	if updatedBalance != expectedBalance {
+		t.Errorf("Unexpected Balance.\n\tExpected: %s\n\tActual  : %s", expectedBalance, updatedBalance)
+	}
+}
+
+// Test for when the update Balance that is trying to be applied is not valid in the context of the account. For example, where the Data of the update is outside of the TimeRange of the account.
+func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	newBalance := GOHMoney.Balance{ Date: account.Start.Time }
+	createdBalance, err := account.InsertBalance(db,newBalance)
+	if err != nil {
+		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+	}
+	update := GOHMoney.Balance{Date:account.Start.Time.AddDate(-1,0,0)}
+	_, err = account.UpdateBalance(db, createdBalance,update)
+	expectedError := `Update is not valid for account: ` + GOHMoney.BalanceDateOutOfAccountTimeRange{}.Error()
+	if err == nil {
+		t.Errorf("Expected error but got nil.")
+	} else if err.Error() != expectedError {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err.Error())
+	}
+}
+
+func Test_UpdateBalance_ValidBalance(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	newBalance := GOHMoney.Balance{	Date: account.Start.Time }
+	createdBalance, err := account.InsertBalance(db,newBalance)
+	if err != nil {
+		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+	}
+	update := GOHMoney.Balance{
+		Date:account.Start.Time.AddDate(0,0,1),
+		Amount:100,
+	}
+	updatedBalance, err := account.UpdateBalance(db, createdBalance,update)
+	expectedError := error(nil)
+	if err != expectedError {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
+	}
+	if updatedBalance.Id != updatedBalance.Id {
+		t.Errorf("Balance Id changed when updating Balance\n\tOriginal: %d\n\tFinal   : %d", createdBalance.Id, updatedBalance.Id)
+	}
+	expectedDate := update.Date.Truncate(time.Hour * 24)
+	if !updatedBalance.Balance.Date.Equal(expectedDate) {
+		t.Errorf("Unexpected Balance date.\n\tExpected: %s\n\tActual  : %s", update.Date, updatedBalance.Balance.Date)
+	}
+	if updatedBalance.Balance.Amount != update.Amount {
+		t.Errorf("Unexpected Balance Amount.\n\tExpected: %s\n\tActual  : %s", update.Amount, updatedBalance.Amount)
+	}
 }
 
 func Test_AccountBalanceAtDate(t *testing.T) {

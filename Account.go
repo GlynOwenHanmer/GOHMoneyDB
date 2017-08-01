@@ -24,6 +24,28 @@ type Account struct {
 // Accounts holds multiple Account items.
 type Accounts []Account
 
+// ValidateBalance validates a Balance against an Account and returns any errors that are encountered along the way.
+// ValidateBalance will return any error that is present with the Balance itself, the Balance's Date in reference to the Account's TimeRange and also check that the Account is the valid owner of the Balance.
+func (account Account) ValidateBalance(db *sql.DB, balance Balance) error {
+	err := account.Account.ValidateBalance(balance.Balance)
+	if err != nil {
+		return err
+	}
+	balances, err := selectBalancesForAccount(db, account.Id)
+	if err != nil {
+		return err
+	}
+	for _, accountBalance := range balances {
+		if accountBalance.Id == balance.Id {
+			return nil
+		}
+	}
+	return InvalidAccountBalanceError{
+		AccountId:account.Id,
+		BalanceId:balance.Id,
+	}
+}
+
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors occured whilst attempting to retrieve the Accounts.
 func SelectAccounts(db *sql.DB) (Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts ORDER BY id ASC;"
@@ -95,7 +117,7 @@ func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 	return &openAccounts, rows.Err()
 }
 
-// scanRowForAccount scans a single sql.Row for a GOHMoneyDB.Account obect and returns any error occuring along the way.
+// scanRowForAccount scans a single sql.Row for a Account object and returns any error occurring along the way.
 func scanRowForAccount(row *sql.Row) (*Account, error) {
 	account := Account{
 		Account:GOHMoney.Account{
@@ -107,4 +129,14 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 		},
 	}
 	return &account, row.Scan(&account.Id, &account.Name, &account.TimeRange.Start.Time, &account.TimeRange.End)
+}
+
+// scanRowForBalance scans a single sql.Row for a Balance object and returns any error occurring along the way.
+func scanRowForBalance(row *sql.Row) (*Balance, error) {
+	var balance Balance
+	err := row.Scan(&balance.Id, &balance.Date, &balance.Amount)
+	if err == sql.ErrNoRows {
+		err = NoBalances
+	}
+	return &balance, err
 }

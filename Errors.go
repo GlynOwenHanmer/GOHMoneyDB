@@ -24,3 +24,14 @@ func (e BalancesError) Error() string {
 const (
 	NoBalances = BalancesError("No balances exist.")
 )
+
+// InvalidAccountBalanceError is an error type used to describe when a mistmatch of logical Account and Balance occurs.
+type InvalidAccountBalanceError struct {
+	AccountId, BalanceId uint
+}
+
+// Describes InvalidAccountBalanceError to ensure that InvalidAccountBalanceError adheres to the error interface.
+func (e InvalidAccountBalanceError) Error() string {
+	return fmt.Sprintf(`Invalid balance (id: %d) for account (id: %d).`, e.BalanceId, e.AccountId)
+}
+
