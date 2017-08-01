@@ -75,6 +75,9 @@ func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMon
 	if err := update.Validate(); err != nil {
 		return Balance{}, errors.New(`Update Balance is not valid: ` + err.Error())
 	}
+	if err := account.Account.ValidateBalance(update); err != nil {
+		return Balance{}, errors.New(`Update is not valid for account: ` + err.Error())
+	}
 	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning ` + balanceSelectFields, update.Amount, update.Date, original.Id)
 	balance, err := scanRowForBalance(row)
 	return *balance, err

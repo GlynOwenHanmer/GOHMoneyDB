@@ -273,6 +273,31 @@ func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 	}
 }
 
+// Test for when the update Balance that is trying to be applied is not valid in the context of the account. For example, where the Data of the update is outside of the TimeRange of the account.
+func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error when prepping test DB. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db,newTestAccount())
+	if err != nil {
+		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
+	}
+	newBalance := GOHMoney.Balance{ Date: account.Start.Time }
+	createdBalance, err := account.InsertBalance(db,newBalance)
+	if err != nil {
+		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
+	}
+	update := GOHMoney.Balance{Date:account.Start.Time.AddDate(-1,0,0)}
+	_, err = account.UpdateBalance(db, createdBalance,update)
+	expectedError := `Update is not valid for account: ` + GOHMoney.BalanceDateOutOfAccountTimeRange{}.Error()
+	if err == nil {
+		t.Errorf("Expected error but got nil.")
+	} else if err.Error() != expectedError {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err.Error())
+	}
+}
+
 func Test_UpdateBalance_ValidBalance(t *testing.T) {
 	db, err := prepareTestDB()
 	if err != nil {
@@ -288,11 +313,11 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
 	update := GOHMoney.Balance{
-		Date:time.Now(),
+		Date:account.Start.Time.AddDate(0,0,1),
 		Amount:100,
 	}
 	updatedBalance, err := account.UpdateBalance(db, createdBalance,update)
-	expectedError := error( nil)
+	expectedError := error(nil)
 	if err != expectedError {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
 	}
