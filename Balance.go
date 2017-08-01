@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"time"
+	"errors"
 )
 
 const (
@@ -66,16 +67,17 @@ func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Bala
 	return insertedBalance, row.Scan(&insertedBalance.Id, &insertedBalance.Date, &insertedBalance.Amount)
 }
 
+// UpdateBalance updates a Balance entry in a given db for a given account and original Balance, returning any errors that are present with the validitiy of the Account, original Balance or update Balance.
 func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMoney.Balance) (Balance, error) {
-	err := account.ValidateBalance(db,original)
-	if err != nil {
+	if err := account.ValidateBalance(db,original); err != nil {
 		return Balance{}, err
 	}
-	//Check that Balance actually belongs to account.
-	//Check that updates are:
-	//   A - Acceptable as Balance on own (validateBalance method?)
-	//   B - Acceptable as Balance as part of that account (No date conflicts, etc.) (Account.validateBalance method? Where dates are checked that they're in the right range.)
-	return Balance{}, nil
+	if err := update.Validate(); err != nil {
+		return Balance{}, errors.New(`Update Balance is not valid: ` + err.Error())
+	}
+	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning ` + balanceSelectFields, update.Amount, update.Date, original.Id)
+	balance, err := scanRowForBalance(row)
+	return *balance, err
 }
 
 // BalanceAtDate returns a Balance item representing the Balance of an account at the given time for the given account with the given DB.
@@ -87,10 +89,6 @@ func (account Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error
 	fmt.Fprintf(&query, ` AND date <= $2 `)
 	fmt.Fprintf(&query, `ORDER BY date DESC, id DESC LIMIT 1;`, )
 	row := db.QueryRow(query.String(), account.Id, time)
-	var balance Balance
-	err := row.Scan(&balance.Id, &balance.Date, &balance.Amount)
-	if err == sql.ErrNoRows {
-		err = NoBalances
-	}
-	return balance, err
+	balance, err := scanRowForBalance(row)
+	return *balance, err
 }
