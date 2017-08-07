@@ -95,3 +95,13 @@ func (account Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
+
+// scanRowForBalance scans a single sql.Row for a Balance object and returns any error occurring along the way.
+func scanRowForBalance(row *sql.Row) (*Balance, error) {
+	var balance Balance
+	err := row.Scan(&balance.Id, &balance.Date, &balance.Amount)
+	if err == sql.ErrNoRows {
+		err = NoBalances
+	}
+	return &balance, err
+}

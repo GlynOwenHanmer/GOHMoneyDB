@@ -130,13 +130,3 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 	}
 	return &account, row.Scan(&account.Id, &account.Name, &account.TimeRange.Start.Time, &account.TimeRange.End)
 }
-
-// scanRowForBalance scans a single sql.Row for a Balance object and returns any error occurring along the way.
-func scanRowForBalance(row *sql.Row) (*Balance, error) {
-	var balance Balance
-	err := row.Scan(&balance.Id, &balance.Date, &balance.Amount)
-	if err == sql.ErrNoRows {
-		err = NoBalances
-	}
-	return &balance, err
-}
