@@ -201,6 +201,68 @@ func Test_CreateAccount(t *testing.T) {
 	}
 }
 
+func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Unable to prepare DB for testings. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db, newTestAccount())
+	// Account with no Balances
+	_, err = account.SelectBalanceWithId(db, 10)
+	expectedErr := NoBalances
+	if err != expectedErr {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
+	}
+
+	validBalance, err := account.InsertBalance(db,
+		GOHMoney.Balance{
+			Date:   account.Start.Time.AddDate(0, 0, 10),
+			Amount: float32(10),
+		},
+	)
+	if err != nil {
+		t.Fatalf("Error occurred whilst inserting Balance for testing. Error: %s", err)
+	}
+	if validBalance.Id < 1 {
+		t.Fatalf("Inserted balance returned balance of less than 1 so cannot be subtracted from to make invalid uint Balance Id")
+	}
+	invalidBalanceId := validBalance.Id - 1
+	// Account with Balances
+	_, err = account.SelectBalanceWithId(db, invalidBalanceId)
+	if err != expectedErr {
+		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
+	}
+}
+
+func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Unable to prepare DB for testings. Error: %s", err.Error())
+	}
+	account, err := CreateAccount(db, newTestAccount())
+	var balances [3]Balance
+	for i := 0; i < 3; i++ {
+		balances[i], err =  account.InsertBalance(db,
+			GOHMoney.Balance{
+				Date:account.Start.Time.AddDate(0,0,i),
+				Amount:float32(i),
+			},
+		)
+	}
+	for _, balance := range balances {
+		selectedBalance, err := account.SelectBalanceWithId(db, balance.Id)
+		if err != nil {
+			t.Errorf("Expected nil error but recieved error: %s", err)
+		}
+		switch {
+		case selectedBalance.Id != balance.Id,
+			selectedBalance.Amount != balance.Amount,
+			!selectedBalance.Date.Equal(balance.Date):
+			t.Errorf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s",balance, selectedBalance)
+		}
+	}
+}
+
 func newTestAccount() GOHMoney.Account {
 	return GOHMoney.Account{
 		Name:       "TEST_ACCOUNT",

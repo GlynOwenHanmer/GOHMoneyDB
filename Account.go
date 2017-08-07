@@ -95,6 +95,16 @@ func CreateAccount(db *sql.DB, newAccount GOHMoney.Account) (*Account, error) {
 	return scanRowForAccount(row)
 }
 
+// SelectBalanceWithId returns a Balance from the database that has the given ID if the account is the correct one that it belongs to.
+// Otherwise, SelectBalanceWithId returns an empty Balance object and an error.
+func (account Account) SelectBalanceWithId(db *sql.DB, id uint) (*Balance, error) {
+	var query bytes.Buffer
+	fmt.Fprintf(&query, `SELECT %s FROM balances b `, balanceSelectFields)
+	fmt.Fprint(&query, `WHERE b.account_id = $1 AND b.id = $2`)
+	row := db.QueryRow(query.String(), account.Id, id)
+	return scanRowForBalance(row)
+}
+
 // scanRowsForAccounts scans an sql.Rows object for GOHMoneyDB.Accounts objects and returns then along with any error that occurs whilst attempting to scan.
 func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 	openAccounts := Accounts{}
