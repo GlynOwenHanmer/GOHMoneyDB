@@ -7,6 +7,7 @@ import (
 	"time"
 	"fmt"
 	"bytes"
+	"encoding/json"
 )
 
 func Test_SelectAccounts(t *testing.T) {
@@ -261,3 +262,39 @@ func newTestAccount() GOHMoney.Account {
 	return account
 }
 
+func TestAccount_JsonLoop(t *testing.T) {
+	innerAccount, err := GOHMoney.NewAccount(
+		"TEST",
+		time.Now(),
+		pq.NullTime{
+			Valid:true,
+			Time:time.Now().AddDate(1,0,0),
+		},
+	)
+	if err != nil {
+		t.Fatalf("Error creating new account for testing. Error: %s", err.Error())
+	}
+	originalAccount := Account{
+		Id:999,
+		Account:innerAccount,
+	}
+	originalBytes, err := json.Marshal(originalAccount)
+	if err != nil {
+		t.Fatalf("Error marshalling account into json. Error: %s", err.Error())
+	}
+	var finalAccount Account
+	json.Unmarshal(originalBytes, &finalAccount)
+	logBytes := func(t *testing.T){t.Log("Marshalled account: " + string(originalBytes))}
+	if finalAccount.Id != originalAccount.Id {
+		t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", originalAccount.Id, finalAccount.Id)
+		logBytes(t)
+	}
+	if !originalAccount.Start().Equal(finalAccount.Start()) {
+		t.Errorf("Unexpected account Start.\n\tExpected: %s\n\tActual  : %s", originalAccount.Start(), finalAccount.Start())
+		logBytes(t)
+	}
+	if originalAccount.End().Valid != finalAccount.End().Valid || !originalAccount.End().Time.Equal(finalAccount.End().Time) {
+		t.Errorf("Unexpected account End. \n\tExpected: %s\n\tActual  : %s", originalAccount.End(), finalAccount.End())
+		logBytes(t)
+	}
+}

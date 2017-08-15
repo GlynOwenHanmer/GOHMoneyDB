@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"github.com/lib/pq"
 	"time"
+	"encoding/json"
 )
 
 const (
@@ -20,6 +21,43 @@ const (
 type Account struct {
 	Id         uint
 	GOHMoney.Account
+}
+
+// accountJsonHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
+type accountJsonHelper struct {
+	Id uint
+	Name string
+	Start time.Time
+	End pq.NullTime
+}
+
+// MarshalJSON Marshals an Account into json bytes and an error
+func (account Account) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&accountJsonHelper{
+		Id: account.Id,
+		Name: account.Name,
+		Start:account.Start(),
+		End:account.End(),
+	})
+}
+
+// UnmarshalJSON attempts to unmarshal a json blob into an Account object and returns any errors with the unmarshalling or unmarshalled account.
+func (account *Account) UnmarshalJSON(data []byte) error {
+	var helper accountJsonHelper
+	if err := json.Unmarshal(data, &helper); err != nil {
+		return err
+	}
+	innerAccount, err := GOHMoney.NewAccount(helper.Name, helper.Start, helper.End)
+	if err != nil {
+		return err
+	}
+	account.Id = helper.Id
+	account.Account = innerAccount
+	var returnErr error
+	if err := account.Validate(); err != nil {
+		returnErr = err
+	}
+	return returnErr
 }
 
 // Accounts holds multiple Account items.
