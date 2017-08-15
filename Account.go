@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"bytes"
 	"github.com/lib/pq"
+	"time"
 )
 
 const (
@@ -91,7 +92,7 @@ func CreateAccount(db *sql.DB, newAccount GOHMoney.Account) (*Account, error) {
 	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, insertFields)
 	fmt.Fprint(&queryString, `VALUES ($1, $2, $3) `)
 	fmt.Fprintf(&queryString, `returning %s`, selectFields)
-	row := db.QueryRow(queryString.String(), newAccount.Name, newAccount.TimeRange.Start.Time, newAccount.TimeRange.End)
+	row := db.QueryRow(queryString.String(), newAccount.Name, newAccount.Start(), newAccount.End())
 	return scanRowForAccount(row)
 }
 
@@ -109,34 +110,36 @@ func (account Account) SelectBalanceWithId(db *sql.DB, id uint) (*Balance, error
 func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 	openAccounts := Accounts{}
 	for rows.Next() {
-		account := Account{
-			Account:GOHMoney.Account{
-				TimeRange:GOHMoney.TimeRange{
-					Start:pq.NullTime{
-						Valid:true,
-					},
-				},
-			},
-		}
-		err := rows.Scan(&account.Id, &account.Name, &account.TimeRange.Start.Time, &account.TimeRange.End)
+		var id uint
+		var name string
+		var start time.Time
+		var end pq.NullTime
+		err := rows.Scan(&id, &name, &start, &end)
 		if err != nil {
 			return nil, err
 		}
-		openAccounts = append(openAccounts, account)
+		innerAccount, err := GOHMoney.NewAccount(name, start, end)
+		if err != nil {
+			return nil, err
+		}
+		openAccounts = append(openAccounts, Account{Id: id,	Account:innerAccount})
 	}
 	return &openAccounts, rows.Err()
 }
 
 // scanRowForAccount scans a single sql.Row for a Account object and returns any error occurring along the way.
 func scanRowForAccount(row *sql.Row) (*Account, error) {
-	account := Account{
-		Account:GOHMoney.Account{
-			TimeRange:GOHMoney.TimeRange{
-				Start:pq.NullTime{
-					Valid:true,
-				},
-			},
-		},
+	var id uint
+	var name string
+	var start time.Time
+	var end pq.NullTime
+	err := row.Scan(&id, &name, &start, &end)
+	if err != nil {
+		return nil, err
 	}
-	return &account, row.Scan(&account.Id, &account.Name, &account.TimeRange.Start.Time, &account.TimeRange.End)
+	innerAccount, err := GOHMoney.NewAccount(name, start, end)
+	if err != nil{
+		return nil ,err
+	}
+	return &Account{Id:id, Account:innerAccount}, nil
 }
