@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"bytes"
 	"github.com/lib/pq"
+	"time"
+	"encoding/json"
 )
 
 const (
@@ -17,8 +19,45 @@ const (
 
 // Account holds logic for an Account item that is held within a GOHMoney database.
 type Account struct {
-	Id         uint		`json:"id"`
+	Id         uint
 	GOHMoney.Account
+}
+
+// accountJsonHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
+type accountJsonHelper struct {
+	Id uint
+	Name string
+	Start time.Time
+	End pq.NullTime
+}
+
+// MarshalJSON Marshals an Account into json bytes and an error
+func (account Account) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&accountJsonHelper{
+		Id: account.Id,
+		Name: account.Name,
+		Start:account.Start(),
+		End:account.End(),
+	})
+}
+
+// UnmarshalJSON attempts to unmarshal a json blob into an Account object and returns any errors with the unmarshalling or unmarshalled account.
+func (account *Account) UnmarshalJSON(data []byte) error {
+	var helper accountJsonHelper
+	if err := json.Unmarshal(data, &helper); err != nil {
+		return err
+	}
+	innerAccount, err := GOHMoney.NewAccount(helper.Name, helper.Start, helper.End)
+	if err != nil {
+		return err
+	}
+	account.Id = helper.Id
+	account.Account = innerAccount
+	var returnErr error
+	if err := account.Validate(); err != nil {
+		returnErr = err
+	}
+	return returnErr
 }
 
 // Accounts holds multiple Account items.
@@ -47,15 +86,14 @@ func (account Account) ValidateBalance(db *sql.DB, balance Balance) error {
 }
 
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors occured whilst attempting to retrieve the Accounts.
-func SelectAccounts(db *sql.DB) (Accounts, error) {
+func SelectAccounts(db *sql.DB) (*Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts ORDER BY id ASC;"
 	rows, err := db.Query(queryString)
 	if err != nil {
-		return Accounts{}, err
+		return &Accounts{}, err
 	}
 	defer rows.Close()
-	accounts, err := scanRowsForAccounts(rows)
-	return *accounts, err
+	return scanRowsForAccounts(rows)
 }
 
 // SelectAccountsOpen returns an Accounts item holding all Account entries within the given database that are open along with any errors occured whilst attempting to retrieve the Accounts.
@@ -78,6 +116,9 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 	if err == sql.ErrNoRows {
 		err = NoAccountWithIdError(id)
 	}
+	if account == nil {
+		account = &Account{}
+	}
 	return *account, err
 }
 
@@ -91,7 +132,7 @@ func CreateAccount(db *sql.DB, newAccount GOHMoney.Account) (*Account, error) {
 	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, insertFields)
 	fmt.Fprint(&queryString, `VALUES ($1, $2, $3) `)
 	fmt.Fprintf(&queryString, `returning %s`, selectFields)
-	row := db.QueryRow(queryString.String(), newAccount.Name, newAccount.TimeRange.Start.Time, newAccount.TimeRange.End)
+	row := db.QueryRow(queryString.String(), newAccount.Name, newAccount.Start(), newAccount.End())
 	return scanRowForAccount(row)
 }
 
@@ -109,34 +150,36 @@ func (account Account) SelectBalanceWithId(db *sql.DB, id uint) (*Balance, error
 func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 	openAccounts := Accounts{}
 	for rows.Next() {
-		account := Account{
-			Account:GOHMoney.Account{
-				TimeRange:GOHMoney.TimeRange{
-					Start:pq.NullTime{
-						Valid:true,
-					},
-				},
-			},
-		}
-		err := rows.Scan(&account.Id, &account.Name, &account.TimeRange.Start.Time, &account.TimeRange.End)
+		var id uint
+		var name string
+		var start time.Time
+		var end pq.NullTime
+		err := rows.Scan(&id, &name, &start, &end)
 		if err != nil {
 			return nil, err
 		}
-		openAccounts = append(openAccounts, account)
+		innerAccount, err := GOHMoney.NewAccount(name, start, end)
+		if err != nil {
+			return nil, err
+		}
+		openAccounts = append(openAccounts, Account{Id: id,	Account:innerAccount})
 	}
 	return &openAccounts, rows.Err()
 }
 
 // scanRowForAccount scans a single sql.Row for a Account object and returns any error occurring along the way.
 func scanRowForAccount(row *sql.Row) (*Account, error) {
-	account := Account{
-		Account:GOHMoney.Account{
-			TimeRange:GOHMoney.TimeRange{
-				Start:pq.NullTime{
-					Valid:true,
-				},
-			},
-		},
+	var id uint
+	var name string
+	var start time.Time
+	var end pq.NullTime
+	err := row.Scan(&id, &name, &start, &end)
+	if err != nil {
+		return nil, err
 	}
-	return &account, row.Scan(&account.Id, &account.Name, &account.TimeRange.Start.Time, &account.TimeRange.End)
+	innerAccount, err := GOHMoney.NewAccount(name, start, end)
+	if err != nil{
+		return nil ,err
+	}
+	return &Account{Id:id, Account:innerAccount}, nil
 }
