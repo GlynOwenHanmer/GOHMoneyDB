@@ -18,7 +18,7 @@ const (
 
 // Account holds logic for an Account item that is held within a GOHMoney database.
 type Account struct {
-	Id         uint		`json:"id"`
+	Id         uint
 	GOHMoney.Account
 }
 
@@ -48,15 +48,14 @@ func (account Account) ValidateBalance(db *sql.DB, balance Balance) error {
 }
 
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors occured whilst attempting to retrieve the Accounts.
-func SelectAccounts(db *sql.DB) (Accounts, error) {
+func SelectAccounts(db *sql.DB) (*Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts ORDER BY id ASC;"
 	rows, err := db.Query(queryString)
 	if err != nil {
-		return Accounts{}, err
+		return &Accounts{}, err
 	}
 	defer rows.Close()
-	accounts, err := scanRowsForAccounts(rows)
-	return *accounts, err
+	return scanRowsForAccounts(rows)
 }
 
 // SelectAccountsOpen returns an Accounts item holding all Account entries within the given database that are open along with any errors occured whilst attempting to retrieve the Accounts.
@@ -78,6 +77,9 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 	account, err := scanRowForAccount(row)
 	if err == sql.ErrNoRows {
 		err = NoAccountWithIdError(id)
+	}
+	if account == nil {
+		account = &Account{}
 	}
 	return *account, err
 }
