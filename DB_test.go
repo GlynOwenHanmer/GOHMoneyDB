@@ -1,8 +1,6 @@
 package GOHMoneyDB
 
 import (
-	"os"
-	"io"
 	"os/user"
 	"testing"
 	"errors"
@@ -25,16 +23,11 @@ func prepareTestDB() (*sql.DB, error) {
 	if len(usr.HomeDir) < 1 {
 		return nil, errors.New("No home directory for current user.")
 	}
-	f, err := os.Open(usr.HomeDir + `/.gohmoneydbtestconnectionstring`)
+	connectionString, err := LoadDBConnectionString(usr.HomeDir + `/.gohmoneydbtestconnectionstring`)
 	if err != nil {
 		return nil, err
 	}
-	connectionString := make([]byte, 200)
-	bytesCount, err := f.Read(connectionString)
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
-	return OpenDBConnection(string(connectionString[0:bytesCount]))
+	return OpenDBConnection(connectionString)
 }
 
 func Test_isAvailable(t *testing.T) {
