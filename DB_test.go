@@ -1,10 +1,11 @@
-package GOHMoneyDB
+package GOHMoneyDB_test
 
 import (
 	"os/user"
 	"testing"
 	"errors"
 	"database/sql"
+	"github.com/GlynOwenHanmer/GOHMoneyDB"
 )
 
 func Test_prepareTestDB(t *testing.T) {
@@ -23,16 +24,16 @@ func prepareTestDB() (*sql.DB, error) {
 	if len(usr.HomeDir) < 1 {
 		return nil, errors.New("No home directory for current user.")
 	}
-	connectionString, err := LoadDBConnectionString(usr.HomeDir + `/.gohmoneydbtestconnectionstring`)
+	connectionString, err := GOHMoneyDB.LoadDBConnectionString(usr.HomeDir + `/.gohmoneydbtestconnectionstring`)
 	if err != nil {
 		return nil, err
 	}
-	return OpenDBConnection(connectionString)
+	return  GOHMoneyDB.OpenDBConnection(connectionString)
 }
 
 func Test_isAvailable(t *testing.T) {
-	unavailableDb, _ := OpenDBConnection("INVALID CONNECTION STRING")
-	if DbIsAvailable(unavailableDb) {
+	unavailableDb, _ := GOHMoneyDB.OpenDBConnection("INVALID CONNECTION STRING")
+	if GOHMoneyDB.DbIsAvailable(unavailableDb) {
 		t.Error("isAvailable returned true when it should have been false.")
 	}
 
@@ -40,7 +41,7 @@ func Test_isAvailable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error occured whilst prepping DB for test. Error: %s", err.Error())
 	}
-	if !DbIsAvailable(availableDb) {
+	if !GOHMoneyDB.DbIsAvailable(availableDb) {
 		t.Error("isAvailable returned false when it should have been true.")
 	}
 }

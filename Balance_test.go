@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"database/sql"
 	"errors"
+	"github.com/lib/pq"
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
@@ -443,4 +444,17 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 	}
 }
 
-
+func newTestAccount() GOHMoney.Account {
+	account, err := GOHMoney.NewAccount(
+		"TEST_ACCOUNT",
+		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
+		pq.NullTime{
+			Valid: true,
+			Time: time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+	return account
+}

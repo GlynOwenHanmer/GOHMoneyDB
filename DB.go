@@ -6,6 +6,7 @@ import (
 	"os"
 	"fmt"
 	"io"
+	"os/user"
 )
 
 // OpenDBConnection returns a connection to a DB using the given connection string along with any errors that occur whilst attempting to open the connection.
@@ -44,4 +45,20 @@ func LoadDBConnectionString(location string) (string, error) {
 		return ``, err
 	}
 	return string(connectionString[0:bytesCount]), err
+}
+
+// prepareTestDB prepares a DB connection to the test DB and return it, if possible, with any errors that occured whilst preparing the connection.
+func prepareTestDB() (*sql.DB, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	if len(usr.HomeDir) < 1 {
+		return nil, errors.New("No home directory for current user.")
+	}
+	connectionString, err := LoadDBConnectionString(usr.HomeDir + `/.gohmoneydbtestconnectionstring`)
+	if err != nil {
+		return nil, err
+	}
+	return OpenDBConnection(connectionString)
 }

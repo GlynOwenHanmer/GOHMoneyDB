@@ -10,6 +10,7 @@ import (
 	"github.com/lib/pq"
 	"time"
 	"encoding/json"
+	"errors"
 )
 
 const (
@@ -182,4 +183,17 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 		return nil ,err
 	}
 	return &Account{Id:id, Account:innerAccount}, nil
+}
+
+// UpdateBalance updates an Account entry in a given db, returning any errors that are present with the validity of the original Account or update Account.
+func (original Account) Update(db *sql.DB, update GOHMoney.Account) (Account, error) {
+	if err := original.Validate(); err != nil {
+		return Account{}, err
+	}
+	if err := update.Validate(); err != nil {
+		return Account{}, errors.New(`Update Account is not valid: ` + err.Error())
+	}
+	row := db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning ` + selectFields, update.Name, update.Start(), update.End(), original.Id)
+	account, err := scanRowForAccount(row)
+	return *account, err
 }
