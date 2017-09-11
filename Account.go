@@ -244,10 +244,10 @@ func (a Account) Validate(db *sql.DB) error {
 		return err
 	}
 	if a.deletedAt.Valid && b.deletedAt.Valid && !a.deletedAt.Time.Equal(b.deletedAt.Time) {
-		return errors.New("Account in DB different to Account in runtime.")
+		return AccountDifferentInDbAndRuntime
 	}
 	if !a.Account.Equal(&b.Account) {
-		return errors.New("Account in DB different to Account in runtime.")
+		return AccountDifferentInDbAndRuntime
 	}
 	if err := a.Account.Validate(); err != nil {
 		return nil

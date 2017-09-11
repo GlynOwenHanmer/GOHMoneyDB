@@ -37,3 +37,5 @@ func (e InvalidAccountBalanceError) Error() string {
 }
 
 var AccountDeleted = errors.New("account is deleted")
+var AccountDifferentInDbAndRuntime = errors.New("account in DB different to Account in runtime")
+

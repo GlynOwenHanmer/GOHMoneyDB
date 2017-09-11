@@ -373,3 +373,31 @@ func TestAccount_JsonLoop(t *testing.T) {
 	}
 }
 
+func TestAccount_Validate(t *testing.T) {
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error preparing DB for testing: %s", err)
+	}
+	defer db.Close()
+	invalid := GOHMoneyDB.Account{}
+	err = invalid.Validate(db)
+	if err == nil {
+		t.Errorf("Expected expected but none returned.")
+	}
+	if expected := GOHMoneyDB.NoAccountWithIdError(0); err != expected {
+		t.Errorf("Expected error %s, but got %s", expected, err)
+	}
+	invalid.Id = 5
+	err = invalid.Validate(db)
+	if expected := GOHMoneyDB.AccountDifferentInDbAndRuntime; err != expected {
+		t.Errorf("Expected error %s, but got %s", expected, err)
+	}
+
+	valid, err := GOHMoneyDB.SelectAccountWithID(db,1)
+	if err != nil {
+		t.Fatalf("Error selecting valid account for testing: %s", err)
+	}
+	if validErr := valid.Validate(db); validErr != nil {
+		t.Errorf("Expected nil error but got %s", validErr)
+	}
+}
