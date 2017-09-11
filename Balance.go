@@ -12,6 +12,7 @@ import (
 const (
 	balanceInsertFields string = "account_id, date, balance"
 	balanceSelectFields string = "id, date, balance"
+	bBalanceSelectFields string = "b.id, b.date, b.balance"
 )
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.
@@ -33,7 +34,7 @@ func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
 	var queryBuffer bytes.Buffer
 	queryBuffer.WriteString("SELECT ")
 	queryBuffer.WriteString(balanceSelectFields)
-	queryBuffer.WriteString(" FROM balances WHERE account_id = ")
+	queryBuffer.WriteString(" FROM balances b WHERE account_id = ")
 	queryBuffer.WriteString(fmt.Sprintf("%d", accountId))
 	queryBuffer.WriteString(" ORDER BY date ASC, Id ASC")
 	rows, err := db.Query(queryBuffer.String())
