@@ -114,8 +114,10 @@ func SelectAccountsOpen(db *sql.DB) (Accounts, error) {
 
 // SelectAccountWithId returns the Account from the DB with the given Id value along with any error that occurs whilst attempting to retrieve the Account.
 func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
-	queryString := fmt.Sprintf("SELECT " + selectFields + " FROM accounts WHERE id = %d AND deleted_at IS NULL;", id)
-	row := db.QueryRow(queryString)
+	if db == nil {
+		return Account{}, errors.New("nil db pointer")
+	}
+	row := db.QueryRow("SELECT " + selectFields + " FROM accounts WHERE id = $1;", id)
 	account, err := scanRowForAccount(row)
 	if err == sql.ErrNoRows {
 		err = NoAccountWithIdError(id)
@@ -176,6 +178,7 @@ func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 }
 
 // scanRowForAccount scans a single sql.Row for a Account object and returns any error occurring along the way.
+// If the account exists but has been marked as deleted, an AccountDeleted error will be returned along with the account.
 func scanRowForAccount(row *sql.Row) (*Account, error) {
 	var id uint
 	var name string
@@ -188,7 +191,10 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 	if err != nil{
 		return nil ,err
 	}
-	return &Account{Id:id, Account:innerAccount, deletedAt:deletedAt}, nil
+	if deletedAt.Valid {
+		err = AccountDeleted
+	}
+	return &Account{Id:id, Account:innerAccount, deletedAt:deletedAt}, err
 }
 
 // Update updates an Account entry in a given db, returning any errors that are present with the validity of the original Account or update Account.
@@ -213,11 +219,29 @@ func (original Account) Update(db *sql.DB, update GOHMoney.Account) (Account, er
 	return *account, err
 }
 
+// Delete marks an Account as deleted in the DB, returning any errors that occur whilst attempting the deletion.
+func (a *Account) Delete(db *sql.DB) error {
+	if err := a.Validate(db); err != nil {
+		return errors.New("Account is not valid. " + err.Error())
+	}
+	deletedAt := pq.NullTime{Valid: true, Time: time.Now()}
+	row := db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning ` + selectFields, deletedAt, a.Id)
+	_, err := scanRowForAccount(row)
+	if err == AccountDeleted {
+		a.deletedAt = deletedAt
+		return nil
+	} else if err != nil {
+		return err
+	}
+	//Should not be reached.
+	return errors.New("internal error when deleting account")
+}
+
 // Validate returns any errors that are present with an Account object
 func (a Account) Validate(db *sql.DB) error {
 	b, err := SelectAccountWithID(db, a.Id)
 	if err != nil {
-		return errors.New("Error selecting account for validation. " + err.Error())
+		return err
 	}
 	if a.deletedAt.Valid && b.deletedAt.Valid && !a.deletedAt.Time.Equal(b.deletedAt.Time) {
 		return errors.New("Account in DB different to Account in runtime.")
@@ -225,11 +249,8 @@ func (a Account) Validate(db *sql.DB) error {
 	if !a.Account.Equal(&b.Account) {
 		return errors.New("Account in DB different to Account in runtime.")
 	}
-	if a.deletedAt.Valid {
-		return errors.New("Account is deleted.")
-	}
 	if err := a.Account.Validate(); err != nil {
 		return nil
 	}
-	return nil
+	return err
 }

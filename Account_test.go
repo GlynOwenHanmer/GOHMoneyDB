@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"fmt"
 	"encoding/json"
+	"database/sql"
 )
 
 func Test_CreateAccount(t *testing.T) {
@@ -130,8 +131,9 @@ func Test_SelectAccountWithId(t *testing.T) {
 			expectedError:GOHMoneyDB.NoAccountWithIdError(0),
 		},
 		{
-			id:9999999,
-			expectedError:GOHMoneyDB.NoAccountWithIdError(9999999),
+			// Max for postgres smallint value
+			id:32767,
+			expectedError:GOHMoneyDB.NoAccountWithIdError(32767),
 		},
 		{
 			id:10,
@@ -261,6 +263,14 @@ func newTestAccount() GOHMoney.Account {
 	return account
 }
 
+func newTestDBAccount(db *sql.DB) GOHMoneyDB.Account {
+	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	if err != nil {
+		panic(err)
+	}
+	return *account
+}
+
 func TestAccount_UpdateAccount(t *testing.T) {
 	now := time.Now()
 	original, err := GOHMoney.NewAccount("TEST_ACCOUNT", now, pq.NullTime{})
@@ -295,6 +305,30 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	)
 	if !updated.Account.Equal(&expected) {
 		t.Errorf("Updates not applied as expected.\nUpdated account: %s\nApplied updates: %s", updated, expected)
+	}
+}
+
+func TestAccount_Delete(t *testing.T) {
+	invalid := GOHMoneyDB.Account{}
+	if invalid.Delete(nil) == nil {
+		t.Errorf("Expected error but none was returned when attempting to delete an invalid account.")
+	}
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error preparing DB for testing.")
+	}
+	account := newTestDBAccount(db)
+	if account.Validate(db) != nil {
+		t.Fatalf("Invalid account returned for testing. Details: %s", err)
+	}
+	if err := account.Delete(db); err != nil {
+		t.Fatalf("Error occured whilst deleting account. Error: %s", err)
+	}
+	valid := account.Validate(db)
+	if valid == nil {
+		t.Fatalf("Account still valid after deletion.")
+	} else if valid != GOHMoneyDB.AccountDeleted {
+		t.Fatalf("Validity error not as expected. Expected %s, got %s.", GOHMoneyDB.AccountDeleted, valid)
 	}
 }
 
