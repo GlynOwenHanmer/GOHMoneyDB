@@ -193,6 +193,15 @@ func (original Account) Update(db *sql.DB, update GOHMoney.Account) (Account, er
 	if err := update.Validate(); err != nil {
 		return Account{}, errors.New(`Update Account is not valid: ` + err.Error())
 	}
+	balances, err := original.Balances(db)
+	if err != nil {
+		return Account{}, errors.New("Error selecting balances for validation: " + err.Error())
+	}
+	for _, b := range balances {
+		if err := update.ValidateBalance(b.Balance); err != nil {
+			return Account{}, errors.New(fmt.Sprintf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.Id, err))
+		}
+	}
 	row := db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning ` + selectFields, update.Name, update.Start(), update.End(), original.Id)
 	account, err := scanRowForAccount(row)
 	return *account, err
