@@ -25,19 +25,15 @@ type Balance struct {
 type Balances []Balance
 
 // Balances returns all Balances for a given Account and any errors that occur whilst attempting to retrieve the Balances.
+// The Balances are sorted by chronological order then by the id of the Balance in the DB
 func (account Account) Balances(db *sql.DB) (Balances, error) {
 	return selectBalancesForAccount(db, account.Id)
 }
 
 // selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account Id number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
+// The Balances are sorted by chronological order then by the id of the Balance in the DB
 func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
-	var queryBuffer bytes.Buffer
-	queryBuffer.WriteString("SELECT ")
-	queryBuffer.WriteString(balanceSelectFields)
-	queryBuffer.WriteString(" FROM balances b WHERE account_id = ")
-	queryBuffer.WriteString(fmt.Sprintf("%d", accountId))
-	queryBuffer.WriteString(" ORDER BY date ASC, Id ASC")
-	rows, err := db.Query(queryBuffer.String())
+	rows, err := db.Query("SELECT " + balanceSelectFields + " FROM balances b WHERE account_id = $1 ORDER BY date ASC, Id ASC", accountId)
 	if err != nil {
 		return Balances{}, err
 	}
@@ -89,8 +85,7 @@ func (account Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `SELECT %s`, balanceSelectFields)
 	fmt.Fprint(&query, ` FROM balances `)
-	fmt.Fprintf(&query, `WHERE account_id = $1`)
-	fmt.Fprintf(&query, ` AND date <= $2 `)
+	fmt.Fprintf(&query, `WHERE account_id = $1 AND date <= $2 `)
 	fmt.Fprintf(&query, `ORDER BY date DESC, id DESC LIMIT 1;`, )
 	row := db.QueryRow(query.String(), account.Id, time)
 	balance, err := scanRowForBalance(row)
