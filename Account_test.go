@@ -10,7 +10,6 @@ import (
 
 	"github.com/GlynOwenHanmer/GOHMoney"
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
-	"github.com/lib/pq"
 )
 
 func Test_CreateAccount(t *testing.T) {
@@ -18,18 +17,18 @@ func Test_CreateAccount(t *testing.T) {
 	testSets := []struct {
 		name                 string
 		start, expectedStart time.Time
-		end, expectedEnd     pq.NullTime
+		end, expectedEnd     GOHMoney.NullTime
 		error
 	}{
 		{
 			name:          "TEST_ACCOUNT",
 			start:         now,
 			expectedStart: now,
-			end: pq.NullTime{
+			end: GOHMoney.NullTime{
 				Valid: true,
 				Time:  now.AddDate(1, 0, 0),
 			},
-			expectedEnd: pq.NullTime{
+			expectedEnd: GOHMoney.NullTime{
 				Valid: true,
 				Time:  now.AddDate(1, 0, 0),
 			},
@@ -39,16 +38,16 @@ func Test_CreateAccount(t *testing.T) {
 			name:          "TEST_ACCOUNT",
 			start:         now,
 			expectedStart: now,
-			end:           pq.NullTime{Valid: false},
-			expectedEnd:   pq.NullTime{Valid: false},
+			end:           GOHMoney.NullTime{Valid: false},
+			expectedEnd:   GOHMoney.NullTime{Valid: false},
 			error:         nil,
 		},
 		{
 			name:          "Account With'Apostrophe",
 			start:         now,
 			expectedStart: now,
-			end:           pq.NullTime{Valid: false},
-			expectedEnd:   pq.NullTime{Valid: false},
+			end:           GOHMoney.NullTime{Valid: false},
+			expectedEnd:   GOHMoney.NullTime{Valid: false},
 			error:         nil,
 		},
 	}
@@ -252,7 +251,7 @@ func newTestAccount() GOHMoney.Account {
 	account, err := GOHMoney.NewAccount(
 		"TEST_ACCOUNT",
 		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
-		pq.NullTime{
+		GOHMoney.NullTime{
 			Valid: true,
 			Time:  time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
 		},
@@ -273,12 +272,12 @@ func newTestDBAccount(db *sql.DB) GOHMoneyDB.Account {
 
 func TestAccount_UpdateAccount(t *testing.T) {
 	now := time.Now()
-	original, err := GOHMoney.NewAccount("TEST_ACCOUNT", now, pq.NullTime{})
+	original, err := GOHMoney.NewAccount("TEST_ACCOUNT", now, GOHMoney.NullTime{})
 	if err != nil {
 		t.Fatalf("Error creating account for testing: %s", err)
 	}
 	updatedStart := now.AddDate(1, 0, 0)
-	updatedEnd := pq.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
+	updatedEnd := GOHMoney.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
 	update, err := GOHMoney.NewAccount("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
 	if err != nil {
 		t.Fatalf("Error creating account for testing: %s", err)
@@ -298,7 +297,7 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	expected, err := GOHMoney.NewAccount(
 		update.Name,
 		update.Start().Truncate(24*time.Hour),
-		pq.NullTime{
+		GOHMoney.NullTime{
 			Valid: update.End().Valid,
 			Time:  update.End().Time.Truncate(24 * time.Hour),
 		},
@@ -336,7 +335,7 @@ func TestAccount_JsonLoop(t *testing.T) {
 	innerAccount, err := GOHMoney.NewAccount(
 		"TEST",
 		time.Now(),
-		pq.NullTime{
+		GOHMoney.NullTime{
 			Valid: true,
 			Time:  time.Now().AddDate(1, 0, 0),
 		},

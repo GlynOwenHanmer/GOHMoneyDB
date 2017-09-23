@@ -22,7 +22,7 @@ const (
 type Account struct {
 	Id uint
 	GOHMoney.Account
-	deletedAt pq.NullTime
+	deletedAt GOHMoney.NullTime
 }
 
 // accountJsonHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
@@ -30,7 +30,7 @@ type accountJsonHelper struct {
 	Id    uint
 	Name  string
 	Start time.Time
-	End   pq.NullTime
+	End   GOHMoney.NullTime
 }
 
 // MarshalJSON Marshals an Account into json bytes and an error
@@ -138,7 +138,7 @@ func CreateAccount(db *sql.DB, newAccount GOHMoney.Account) (*Account, error) {
 	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, insertFields)
 	fmt.Fprint(&queryString, `VALUES ($1, $2, $3) `)
 	fmt.Fprintf(&queryString, `returning %s`, selectFields)
-	row := db.QueryRow(queryString.String(), newAccount.Name, newAccount.Start(), newAccount.End())
+	row := db.QueryRow(queryString.String(), newAccount.Name, newAccount.Start(), pq.NullTime(newAccount.End()))
 	return scanRowForAccount(row)
 }
 
@@ -162,17 +162,16 @@ func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 		var id uint
 		var name string
 		var start time.Time
-		var end pq.NullTime
-		var deletedAt pq.NullTime
+		var end, deletedAt pq.NullTime
 		err := rows.Scan(&id, &name, &start, &end, &deletedAt)
 		if err != nil {
 			return nil, err
 		}
-		innerAccount, err := GOHMoney.NewAccount(name, start, end)
+		innerAccount, err := GOHMoney.NewAccount(name, start, GOHMoney.NullTime(end))
 		if err != nil {
 			return nil, err
 		}
-		openAccounts = append(openAccounts, Account{Id: id, Account: innerAccount, deletedAt: deletedAt})
+		openAccounts = append(openAccounts, Account{Id: id, Account: innerAccount, deletedAt: GOHMoney.NullTime(deletedAt)})
 	}
 	return &openAccounts, rows.Err()
 }
@@ -187,14 +186,14 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 	if err := row.Scan(&id, &name, &start, &end, &deletedAt); err != nil {
 		return nil, err
 	}
-	innerAccount, err := GOHMoney.NewAccount(name, start, end)
+	innerAccount, err := GOHMoney.NewAccount(name, start, GOHMoney.NullTime(end))
 	if err != nil {
 		return nil, err
 	}
 	if deletedAt.Valid {
 		err = AccountDeleted
 	}
-	return &Account{Id: id, Account: innerAccount, deletedAt: deletedAt}, err
+	return &Account{Id: id, Account: innerAccount, deletedAt: GOHMoney.NullTime(deletedAt)}, err
 }
 
 // Update updates an Account entry in a given db, returning any errors that are present with the validity of the original Account or update Account.
@@ -214,8 +213,9 @@ func (original Account) Update(db *sql.DB, update GOHMoney.Account) (Account, er
 			return Account{}, errors.New(fmt.Sprintf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.Id, err))
 		}
 	}
-	row := db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), update.End(), original.Id)
-	account, err := scanRowForAccount(row)
+	account, err := scanRowForAccount(
+		db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), pq.NullTime(update.End()), original.Id),
+	)
 	return *account, err
 }
 
@@ -225,12 +225,14 @@ func (a *Account) Delete(db *sql.DB) error {
 		return errors.New("Account is not valid. " + err.Error())
 	}
 	deletedAt := pq.NullTime{Valid: true, Time: time.Now()}
-	row := db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+selectFields, deletedAt, a.Id)
-	_, err := scanRowForAccount(row)
+	_, err := scanRowForAccount(
+		db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+selectFields, deletedAt, a.Id),
+	)
 	if err == AccountDeleted {
-		a.deletedAt = deletedAt
+		a.deletedAt = GOHMoney.NullTime(deletedAt)
 		return nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return err
 	}
 	//Should not be reached.
