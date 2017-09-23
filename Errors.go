@@ -1,8 +1,8 @@
 package GOHMoneyDB
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 )
 
 // NoAccountWithIdError is an error returned when no account with a given ID can be found within a DB
@@ -38,4 +38,3 @@ func (e InvalidAccountBalanceError) Error() string {
 
 var AccountDeleted = errors.New("account is deleted")
 var AccountDifferentInDbAndRuntime = errors.New("account in DB different to Account in runtime")
-

@@ -1,54 +1,55 @@
 package GOHMoneyDB_test
 
 import (
-	"github.com/GlynOwenHanmer/GOHMoney"
-	"github.com/lib/pq"
+	"bytes"
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
+
+	"github.com/GlynOwenHanmer/GOHMoney"
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
-	"bytes"
-	"fmt"
-	"encoding/json"
-	"database/sql"
+	"github.com/lib/pq"
 )
 
 func Test_CreateAccount(t *testing.T) {
 	now := time.Now()
-	testSets := []struct{
-		name string
+	testSets := []struct {
+		name                 string
 		start, expectedStart time.Time
-		end, expectedEnd pq.NullTime
+		end, expectedEnd     pq.NullTime
 		error
 	}{
 		{
-			name:  "TEST_ACCOUNT",
-			start: now,
+			name:          "TEST_ACCOUNT",
+			start:         now,
 			expectedStart: now,
-			end:pq.NullTime{
+			end: pq.NullTime{
 				Valid: true,
-				Time:  now.AddDate(1,0,0),
+				Time:  now.AddDate(1, 0, 0),
 			},
-			expectedEnd:pq.NullTime{
+			expectedEnd: pq.NullTime{
 				Valid: true,
-				Time:  now.AddDate(1,0,0),
+				Time:  now.AddDate(1, 0, 0),
 			},
-			error:          nil,
+			error: nil,
 		},
 		{
-			name:  "TEST_ACCOUNT",
-			start: now,
+			name:          "TEST_ACCOUNT",
+			start:         now,
 			expectedStart: now,
-			end:   pq.NullTime{Valid:false},
-			expectedEnd: pq.NullTime{Valid:false},
-			error:          nil,
+			end:           pq.NullTime{Valid: false},
+			expectedEnd:   pq.NullTime{Valid: false},
+			error:         nil,
 		},
 		{
-			name:  "Account With'Apostrophe",
-			start: now,
-			expectedStart:now,
-			end:   pq.NullTime{Valid:false},
-			expectedEnd:   pq.NullTime{Valid:false},
-			error:          nil,
+			name:          "Account With'Apostrophe",
+			start:         now,
+			expectedStart: now,
+			end:           pq.NullTime{Valid: false},
+			expectedEnd:   pq.NullTime{Valid: false},
+			error:         nil,
 		},
 	}
 	db, err := prepareTestDB()
@@ -73,11 +74,11 @@ func Test_CreateAccount(t *testing.T) {
 		if testSet.name != actualCreatedAccount.Name {
 			t.Errorf("Unexpected created account name:\nExpected: %s\nActual  : %s", testSet.name, actualCreatedAccount.Name)
 		}
-		if !testSet.expectedStart.Truncate(24 * time.Hour).Equal(actualCreatedAccount.Start()){
+		if !testSet.expectedStart.Truncate(24 * time.Hour).Equal(actualCreatedAccount.Start()) {
 			t.Errorf("Unexpected account start.\nExpected: %s\nActual  : %s", testSet.expectedStart, actualCreatedAccount.Start())
 		}
 		testSet.expectedEnd.Time = testSet.expectedEnd.Time.Truncate(24 * time.Hour)
-		if testSet.expectedEnd.Valid != actualCreatedAccount.End().Valid || !testSet.expectedEnd.Time.Equal(actualCreatedAccount.End().Time){
+		if testSet.expectedEnd.Valid != actualCreatedAccount.End().Valid || !testSet.expectedEnd.Time.Equal(actualCreatedAccount.End().Time) {
 			t.Errorf("Unexpected account end.\nExpected: %s\nActual  : %s", testSet.expectedEnd, actualCreatedAccount.End())
 		}
 	}
@@ -101,7 +102,6 @@ func Test_SelectAccounts(t *testing.T) {
 	checkAccountsSortedByIdAscending(*accounts, t)
 }
 
-
 func Test_SelectAccountsOpen(t *testing.T) {
 	db, err := prepareTestDB()
 	defer db.Close()
@@ -121,29 +121,29 @@ func Test_SelectAccountsOpen(t *testing.T) {
 }
 
 func Test_SelectAccountWithId(t *testing.T) {
-	tests := []struct{
-		id uint
+	tests := []struct {
+		id            uint
 		expectedError error
-		name string
+		name          string
 	}{
 		{
-			id:0,
-			expectedError:GOHMoneyDB.NoAccountWithIdError(0),
+			id:            0,
+			expectedError: GOHMoneyDB.NoAccountWithIdError(0),
 		},
 		{
 			// Max for postgres smallint value
-			id:32767,
-			expectedError:GOHMoneyDB.NoAccountWithIdError(32767),
+			id:            32767,
+			expectedError: GOHMoneyDB.NoAccountWithIdError(32767),
 		},
 		{
-			id:10,
-			expectedError:nil,
-			name:"Ikaros",
+			id:            10,
+			expectedError: nil,
+			name:          "Ikaros",
 		},
 		{
-			id:20,
-			expectedError:nil,
-			name:"Amsterdam",
+			id:            20,
+			expectedError: nil,
+			name:          "Amsterdam",
 		},
 	}
 	db, err := prepareTestDB()
@@ -212,10 +212,10 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	var balances [3]GOHMoneyDB.Balance
 	for i := 0; i < 3; i++ {
-		balances[i], err =  account.InsertBalance(db,
+		balances[i], err = account.InsertBalance(db,
 			GOHMoney.Balance{
-				Date:account.Start().AddDate(0,0,i),
-				Amount:float32(i),
+				Date:   account.Start().AddDate(0, 0, i),
+				Amount: float32(i),
 			},
 		)
 	}
@@ -228,7 +228,7 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 		case selectedBalance.Id != balance.Id,
 			selectedBalance.Amount != balance.Amount,
 			!selectedBalance.Date.Equal(balance.Date):
-			t.Errorf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s",balance, selectedBalance)
+			t.Errorf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance)
 		}
 	}
 }
@@ -254,7 +254,7 @@ func newTestAccount() GOHMoney.Account {
 		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
 		pq.NullTime{
 			Valid: true,
-			Time: time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
+			Time:  time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
 		},
 	)
 	if err != nil {
@@ -277,8 +277,8 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating account for testing: %s", err)
 	}
-	updatedStart := now.AddDate(1,0,0)
-	updatedEnd := pq.NullTime{Valid:true,Time:updatedStart.AddDate(2,0,0)}
+	updatedStart := now.AddDate(1, 0, 0)
+	updatedEnd := pq.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
 	update, err := GOHMoney.NewAccount("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
 	if err != nil {
 		t.Fatalf("Error creating account for testing: %s", err)
@@ -297,10 +297,10 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	}
 	expected, err := GOHMoney.NewAccount(
 		update.Name,
-		update.Start().Truncate(24 * time.Hour),
+		update.Start().Truncate(24*time.Hour),
 		pq.NullTime{
-			Valid:update.End().Valid,
-			Time:update.End().Time.Truncate(24 * time.Hour),
+			Valid: update.End().Valid,
+			Time:  update.End().Time.Truncate(24 * time.Hour),
 		},
 	)
 	if !updated.Account.Equal(&expected) {
@@ -337,8 +337,8 @@ func TestAccount_JsonLoop(t *testing.T) {
 		"TEST",
 		time.Now(),
 		pq.NullTime{
-			Valid:true,
-			Time:time.Now().AddDate(1,0,0),
+			Valid: true,
+			Time:  time.Now().AddDate(1, 0, 0),
 		},
 	)
 	if err != nil {
@@ -358,7 +358,7 @@ func TestAccount_JsonLoop(t *testing.T) {
 	}
 	var finalAccount GOHMoneyDB.Account
 	json.Unmarshal(originalBytes, &finalAccount)
-	logBytes := func(t *testing.T){t.Log("Marshalled account: " + string(originalBytes))}
+	logBytes := func(t *testing.T) { t.Log("Marshalled account: " + string(originalBytes)) }
 	if finalAccount.Id != originalAccount.Id {
 		t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", originalAccount.Id, finalAccount.Id)
 		logBytes(t)
@@ -393,7 +393,7 @@ func TestAccount_Validate(t *testing.T) {
 		t.Errorf("Expected error %s, but got %s", expected, err)
 	}
 
-	valid, err := GOHMoneyDB.SelectAccountWithID(db,1)
+	valid, err := GOHMoneyDB.SelectAccountWithID(db, 1)
 	if err != nil {
 		t.Fatalf("Error selecting valid account for testing: %s", err)
 	}

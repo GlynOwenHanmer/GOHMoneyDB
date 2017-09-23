@@ -1,16 +1,16 @@
-
 package GOHMoneyDB
 
 import (
-	"database/sql"
-	"github.com/GlynOwenHanmer/GOHMoney"
-	_ "github.com/lib/pq"
-	"fmt"
 	"bytes"
-	"github.com/lib/pq"
-	"time"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
+
+	"github.com/GlynOwenHanmer/GOHMoney"
+	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -20,26 +20,26 @@ const (
 
 // Account holds logic for an Account item that is held within a GOHMoney database.
 type Account struct {
-	Id         uint
+	Id uint
 	GOHMoney.Account
 	deletedAt pq.NullTime
 }
 
 // accountJsonHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
 type accountJsonHelper struct {
-	Id uint
-	Name string
+	Id    uint
+	Name  string
 	Start time.Time
-	End pq.NullTime
+	End   pq.NullTime
 }
 
 // MarshalJSON Marshals an Account into json bytes and an error
 func (account Account) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&accountJsonHelper{
-		Id: account.Id,
-		Name: account.Name,
-		Start:account.Start(),
-		End:account.End(),
+		Id:    account.Id,
+		Name:  account.Name,
+		Start: account.Start(),
+		End:   account.End(),
 	})
 }
 
@@ -84,8 +84,8 @@ func (account Account) ValidateBalance(db *sql.DB, balance Balance) error {
 		}
 	}
 	return InvalidAccountBalanceError{
-		AccountId:account.Id,
-		BalanceId:balance.Id,
+		AccountId: account.Id,
+		BalanceId: balance.Id,
 	}
 }
 
@@ -117,7 +117,7 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 	if db == nil {
 		return Account{}, errors.New("nil db pointer")
 	}
-	row := db.QueryRow("SELECT " + selectFields + " FROM accounts WHERE id = $1;", id)
+	row := db.QueryRow("SELECT "+selectFields+" FROM accounts WHERE id = $1;", id)
 	account, err := scanRowForAccount(row)
 	if err == sql.ErrNoRows {
 		err = NoAccountWithIdError(id)
@@ -172,7 +172,7 @@ func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 		if err != nil {
 			return nil, err
 		}
-		openAccounts = append(openAccounts, Account{Id: id,	Account:innerAccount, deletedAt:deletedAt})
+		openAccounts = append(openAccounts, Account{Id: id, Account: innerAccount, deletedAt: deletedAt})
 	}
 	return &openAccounts, rows.Err()
 }
@@ -188,13 +188,13 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 		return nil, err
 	}
 	innerAccount, err := GOHMoney.NewAccount(name, start, end)
-	if err != nil{
-		return nil ,err
+	if err != nil {
+		return nil, err
 	}
 	if deletedAt.Valid {
 		err = AccountDeleted
 	}
-	return &Account{Id:id, Account:innerAccount, deletedAt:deletedAt}, err
+	return &Account{Id: id, Account: innerAccount, deletedAt: deletedAt}, err
 }
 
 // Update updates an Account entry in a given db, returning any errors that are present with the validity of the original Account or update Account.
@@ -214,7 +214,7 @@ func (original Account) Update(db *sql.DB, update GOHMoney.Account) (Account, er
 			return Account{}, errors.New(fmt.Sprintf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.Id, err))
 		}
 	}
-	row := db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning ` + selectFields, update.Name, update.Start(), update.End(), original.Id)
+	row := db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), update.End(), original.Id)
 	account, err := scanRowForAccount(row)
 	return *account, err
 }
@@ -225,7 +225,7 @@ func (a *Account) Delete(db *sql.DB) error {
 		return errors.New("Account is not valid. " + err.Error())
 	}
 	deletedAt := pq.NullTime{Valid: true, Time: time.Now()}
-	row := db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning ` + selectFields, deletedAt, a.Id)
+	row := db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+selectFields, deletedAt, a.Id)
 	_, err := scanRowForAccount(row)
 	if err == AccountDeleted {
 		a.deletedAt = deletedAt
