@@ -1,17 +1,19 @@
 package GOHMoneyDB
 
 import (
-	"database/sql"
-	"github.com/GlynOwenHanmer/GOHMoney"
 	"bytes"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
-	"errors"
+
+	"github.com/GlynOwenHanmer/GOHMoney"
 )
 
 const (
-	balanceInsertFields string = "account_id, date, balance"
-	balanceSelectFields string = "id, date, balance"
+	balanceInsertFields  string = "account_id, date, balance"
+	balanceSelectFields  string = "id, date, balance"
+	bBalanceSelectFields string = "b.id, b.date, b.balance"
 )
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.
@@ -24,19 +26,15 @@ type Balance struct {
 type Balances []Balance
 
 // Balances returns all Balances for a given Account and any errors that occur whilst attempting to retrieve the Balances.
+// The Balances are sorted by chronological order then by the id of the Balance in the DB
 func (account Account) Balances(db *sql.DB) (Balances, error) {
 	return selectBalancesForAccount(db, account.Id)
 }
 
 // selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account Id number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
+// The Balances are sorted by chronological order then by the id of the Balance in the DB
 func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
-	var queryBuffer bytes.Buffer
-	queryBuffer.WriteString("SELECT ")
-	queryBuffer.WriteString(balanceSelectFields)
-	queryBuffer.WriteString(" FROM balances WHERE account_id = ")
-	queryBuffer.WriteString(fmt.Sprintf("%d", accountId))
-	queryBuffer.WriteString(" ORDER BY date ASC, Id ASC")
-	rows, err := db.Query(queryBuffer.String())
+	rows, err := db.Query("SELECT "+balanceSelectFields+" FROM balances b WHERE account_id = $1 ORDER BY date ASC, Id ASC", accountId)
 	if err != nil {
 		return Balances{}, err
 	}
@@ -69,7 +67,7 @@ func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Bala
 
 // UpdateBalance updates a Balance entry in a given db for a given account and original Balance, returning any errors that are present with the validitiy of the Account, original Balance or update Balance.
 func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMoney.Balance) (Balance, error) {
-	if err := account.ValidateBalance(db,original); err != nil {
+	if err := account.ValidateBalance(db, original); err != nil {
 		return Balance{}, err
 	}
 	if err := update.Validate(); err != nil {
@@ -78,7 +76,7 @@ func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMon
 	if err := account.Account.ValidateBalance(update); err != nil {
 		return Balance{}, errors.New(`Update is not valid for account: ` + err.Error())
 	}
-	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning ` + balanceSelectFields, update.Amount, update.Date, original.Id)
+	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, update.Amount, update.Date, original.Id)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
@@ -88,9 +86,8 @@ func (account Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `SELECT %s`, balanceSelectFields)
 	fmt.Fprint(&query, ` FROM balances `)
-	fmt.Fprintf(&query, `WHERE account_id = $1`)
-	fmt.Fprintf(&query, ` AND date <= $2 `)
-	fmt.Fprintf(&query, `ORDER BY date DESC, id DESC LIMIT 1;`, )
+	fmt.Fprintf(&query, `WHERE account_id = $1 AND date <= $2 `)
+	fmt.Fprintf(&query, `ORDER BY date DESC, id DESC LIMIT 1;`)
 	row := db.QueryRow(query.String(), account.Id, time)
 	balance, err := scanRowForBalance(row)
 	return *balance, err

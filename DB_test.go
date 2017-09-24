@@ -1,10 +1,11 @@
 package GOHMoneyDB_test
 
 import (
+	"database/sql"
+	"errors"
 	"os/user"
 	"testing"
-	"errors"
-	"database/sql"
+
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
 )
 
@@ -28,7 +29,7 @@ func prepareTestDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return  GOHMoneyDB.OpenDBConnection(connectionString)
+	return GOHMoneyDB.OpenDBConnection(connectionString)
 }
 
 func Test_isAvailable(t *testing.T) {

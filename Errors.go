@@ -1,6 +1,7 @@
 package GOHMoneyDB
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -35,3 +36,5 @@ func (e InvalidAccountBalanceError) Error() string {
 	return fmt.Sprintf(`Invalid balance (id: %d) for account (id: %d).`, e.BalanceId, e.AccountId)
 }
 
+var AccountDeleted = errors.New("account is deleted")
+var AccountDifferentInDbAndRuntime = errors.New("account in DB different to Account in runtime")

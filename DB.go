@@ -3,9 +3,9 @@ package GOHMoneyDB
 import (
 	"database/sql"
 	"errors"
-	"os"
 	"fmt"
 	"io"
+	"os"
 	"os/user"
 )
 
