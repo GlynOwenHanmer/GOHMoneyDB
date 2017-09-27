@@ -10,6 +10,8 @@ import (
 
 	"github.com/GlynOwenHanmer/GOHMoney"
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
+	"github.com/GlynOwenHanmer/GOHMoney/account"
+	"github.com/GlynOwenHanmer/GOHMoney/balance"
 )
 
 func Test_CreateAccount(t *testing.T) {
@@ -57,7 +59,7 @@ func Test_CreateAccount(t *testing.T) {
 		t.Fatalf("Unable to open DB connection.: %s", err)
 	}
 	for _, testSet := range testSets {
-		newAccount, err := GOHMoney.NewAccount(testSet.name, testSet.start, testSet.end)
+		newAccount, err := account.New(testSet.name, testSet.start, testSet.end)
 		if err != nil {
 			t.Fatalf("Error creating new account for testing. Error: %s", err.Error())
 		}
@@ -184,7 +186,7 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 	}
 
 	validBalance, err := account.InsertBalance(db,
-		GOHMoney.Balance{
+		balance.Balance{
 			Date:   account.Start().AddDate(0, 0, 10),
 			Amount: float32(10),
 		},
@@ -212,7 +214,7 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 	var balances [3]GOHMoneyDB.Balance
 	for i := 0; i < 3; i++ {
 		balances[i], err = account.InsertBalance(db,
-			GOHMoney.Balance{
+			balance.Balance{
 				Date:   account.Start().AddDate(0, 0, i),
 				Amount: float32(i),
 			},
@@ -247,8 +249,8 @@ func checkAccountsSortedByIdAscending(accounts GOHMoneyDB.Accounts, t *testing.T
 	}
 }
 
-func newTestAccount() GOHMoney.Account {
-	account, err := GOHMoney.NewAccount(
+func newTestAccount() account.Account {
+	account, err := account.New(
 		"TEST_ACCOUNT",
 		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
 		GOHMoney.NullTime{
@@ -272,29 +274,29 @@ func newTestDBAccount(db *sql.DB) GOHMoneyDB.Account {
 
 func TestAccount_UpdateAccount(t *testing.T) {
 	now := time.Now()
-	original, err := GOHMoney.NewAccount("TEST_ACCOUNT", now, GOHMoney.NullTime{})
+	original, err := account.New("TEST_ACCOUNT", now, GOHMoney.NullTime{})
 	if err != nil {
-		t.Fatalf("Error creating account for testing: %s", err)
+		t.Fatalf("Error creating a for testing: %s", err)
 	}
 	updatedStart := now.AddDate(1, 0, 0)
 	updatedEnd := GOHMoney.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
-	update, err := GOHMoney.NewAccount("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
+	update, err := account.New("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
 	if err != nil {
-		t.Fatalf("Error creating account for testing: %s", err)
+		t.Fatalf("Error creating a for testing: %s", err)
 	}
 	db, err := prepareTestDB()
 	if err != nil {
 		t.Fatalf("Error preparing test DB: %s", err)
 	}
-	account, err := GOHMoneyDB.CreateAccount(db, original)
+	a, err := GOHMoneyDB.CreateAccount(db, original)
 	if err != nil {
-		t.Fatalf("Error creating account: %s", err)
+		t.Fatalf("Error creating a: %s", err)
 	}
-	updated, err := account.Update(db, update)
+	updated, err := a.Update(db, update)
 	if err != nil {
-		t.Errorf("Error updating account: %s", err)
+		t.Errorf("Error updating a: %s", err)
 	}
-	expected, err := GOHMoney.NewAccount(
+	expected, err := account.New(
 		update.Name,
 		update.Start().Truncate(24*time.Hour),
 		GOHMoney.NullTime{
@@ -302,8 +304,8 @@ func TestAccount_UpdateAccount(t *testing.T) {
 			Time:  update.End().Time.Truncate(24 * time.Hour),
 		},
 	)
-	if !updated.Account.Equal(&expected) {
-		t.Errorf("Updates not applied as expected.\nUpdated account: %s\nApplied updates: %s", updated, expected)
+	if !updated.Account.Equal(expected) {
+		t.Errorf("Updates not applied as expected.\nUpdated a: %s\nApplied updates: %s", updated, expected)
 	}
 }
 
@@ -332,7 +334,7 @@ func TestAccount_Delete(t *testing.T) {
 }
 
 func TestAccount_JsonLoop(t *testing.T) {
-	innerAccount, err := GOHMoney.NewAccount(
+	innerAccount, err := account.New(
 		"TEST",
 		time.Now(),
 		GOHMoney.NullTime{

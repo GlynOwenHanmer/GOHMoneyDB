@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney"
+	"github.com/GlynOwenHanmer/GOHMoney/balance"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.
 type Balance struct {
-	GOHMoney.Balance
+	balance.Balance
 	Id uint `json:"id"`
 }
 
@@ -27,8 +27,8 @@ type Balances []Balance
 
 // Balances returns all Balances for a given Account and any errors that occur whilst attempting to retrieve the Balances.
 // The Balances are sorted by chronological order then by the id of the Balance in the DB
-func (account Account) Balances(db *sql.DB) (Balances, error) {
-	return selectBalancesForAccount(db, account.Id)
+func (a Account) Balances(db *sql.DB) (Balances, error) {
+	return selectBalancesForAccount(db, a.Id)
 }
 
 // selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account Id number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
@@ -52,28 +52,28 @@ func selectBalancesForAccount(db *sql.DB, accountId uint) (Balances, error) {
 }
 
 // InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
-func (account Account) InsertBalance(db *sql.DB, balance GOHMoney.Balance) (Balance, error) {
-	err := account.Account.ValidateBalance(balance)
+func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
+	err := a.Account.ValidateBalance(b)
 	if err != nil {
 		return Balance{}, err
 	}
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `INSERT INTO balances (%s) VALUES ($1, $2, $3) `, balanceInsertFields)
 	fmt.Fprintf(&query, `RETURNING %s;`, balanceSelectFields)
-	row := db.QueryRow(query.String(), account.Id, balance.Date, balance.Amount)
+	row := db.QueryRow(query.String(), a.Id, b.Date, b.Amount)
 	var insertedBalance Balance
 	return insertedBalance, row.Scan(&insertedBalance.Id, &insertedBalance.Date, &insertedBalance.Amount)
 }
 
 // UpdateBalance updates a Balance entry in a given db for a given account and original Balance, returning any errors that are present with the validitiy of the Account, original Balance or update Balance.
-func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMoney.Balance) (Balance, error) {
-	if err := account.ValidateBalance(db, original); err != nil {
+func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.Balance) (Balance, error) {
+	if err := a.ValidateBalance(db, original); err != nil {
 		return Balance{}, err
 	}
 	if err := update.Validate(); err != nil {
 		return Balance{}, errors.New(`Update Balance is not valid: ` + err.Error())
 	}
-	if err := account.Account.ValidateBalance(update); err != nil {
+	if err := a.Account.ValidateBalance(update); err != nil {
 		return Balance{}, errors.New(`Update is not valid for account: ` + err.Error())
 	}
 	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, update.Amount, update.Date, original.Id)
@@ -82,13 +82,13 @@ func (account Account) UpdateBalance(db *sql.DB, original Balance, update GOHMon
 }
 
 // BalanceAtDate returns a Balance item representing the Balance of an account at the given time for the given account with the given DB.
-func (account Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error) {
+func (a Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error) {
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `SELECT %s`, balanceSelectFields)
 	fmt.Fprint(&query, ` FROM balances `)
-	fmt.Fprintf(&query, `WHERE account_id = $1 AND date <= $2 `)
-	fmt.Fprintf(&query, `ORDER BY date DESC, id DESC LIMIT 1;`)
-	row := db.QueryRow(query.String(), account.Id, time)
+	fmt.Fprint(&query, `WHERE account_id = $1 AND date <= $2 `)
+	fmt.Fprint(&query, `ORDER BY date DESC, id DESC LIMIT 1;`)
+	row := db.QueryRow(query.String(), a.Id, time)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }

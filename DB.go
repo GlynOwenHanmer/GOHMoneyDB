@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"io"
 	"os"
 	"os/user"
@@ -11,6 +12,7 @@ import (
 
 // OpenDBConnection returns a connection to a DB using the given connection string along with any errors that occur whilst attempting to open the connection.
 func OpenDBConnection(connectionString string) (*sql.DB, error) {
+	log.Print("Opening DB connection.")
 	return sql.Open("postgres", connectionString)
 }
 

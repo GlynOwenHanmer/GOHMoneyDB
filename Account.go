@@ -11,6 +11,7 @@ import (
 	"github.com/GlynOwenHanmer/GOHMoney"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
+	"github.com/GlynOwenHanmer/GOHMoney/account"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 // Account holds logic for an Account item that is held within a GOHMoney database.
 type Account struct {
 	Id uint
-	GOHMoney.Account
+	account.Account
 	deletedAt GOHMoney.NullTime
 }
 
@@ -34,28 +35,28 @@ type accountJsonHelper struct {
 }
 
 // MarshalJSON Marshals an Account into json bytes and an error
-func (account Account) MarshalJSON() ([]byte, error) {
+func (a Account) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&accountJsonHelper{
-		Id:    account.Id,
-		Name:  account.Name,
-		Start: account.Start(),
-		End:   account.End(),
+		Id:    a.Id,
+		Name:  a.Name,
+		Start: a.Start(),
+		End:   a.End(),
 	})
 }
 
 // UnmarshalJSON attempts to unmarshal a json blob into an Account object and returns any errors with the unmarshalling or unmarshalled account.
-func (account *Account) UnmarshalJSON(data []byte) error {
+func (a *Account) UnmarshalJSON(data []byte) error {
 	var helper accountJsonHelper
 	if err := json.Unmarshal(data, &helper); err != nil {
 		return err
 	}
-	innerAccount, err := GOHMoney.NewAccount(helper.Name, helper.Start, helper.End)
+	innerAccount, err := account.New(helper.Name, helper.Start, helper.End)
 	if err != nil {
 		return err
 	}
-	account.Id = helper.Id
-	account.Account = innerAccount
-	if err := account.Account.Validate(); err != nil {
+	a.Id = helper.Id
+	a.Account = innerAccount
+	if err := a.Account.Validate(); err != nil {
 		return err
 	}
 	return nil
@@ -66,15 +67,15 @@ type Accounts []Account
 
 // ValidateBalance validates a Balance against an Account and returns any errors that are encountered along the way.
 // ValidateBalance will return any error that is present with the Balance itself, the Balance's Date in reference to the Account's TimeRange and also check that the Account is the valid owner of the Balance.
-func (account Account) ValidateBalance(db *sql.DB, balance Balance) error {
-	if err := account.Validate(db); err != nil {
+func (a Account) ValidateBalance(db *sql.DB, balance Balance) error {
+	if err := a.Validate(db); err != nil {
 		return err
 	}
-	err := account.Account.ValidateBalance(balance.Balance)
+	err := a.Account.ValidateBalance(balance.Balance)
 	if err != nil {
 		return err
 	}
-	balances, err := selectBalancesForAccount(db, account.Id)
+	balances, err := selectBalancesForAccount(db, a.Id)
 	if err != nil {
 		return err
 	}
@@ -84,7 +85,7 @@ func (account Account) ValidateBalance(db *sql.DB, balance Balance) error {
 		}
 	}
 	return InvalidAccountBalanceError{
-		AccountId: account.Id,
+		AccountId: a.Id,
 		BalanceId: balance.Id,
 	}
 }
@@ -129,7 +130,7 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 }
 
 // CreateAccount created an Account entry within the DB and returns it, if successful, along with any errors that occur whilst attempting to create the Account.
-func CreateAccount(db *sql.DB, newAccount GOHMoney.Account) (*Account, error) {
+func CreateAccount(db *sql.DB, newAccount account.Account) (*Account, error) {
 	newAccountFieldErrors := newAccount.Validate()
 	if newAccountFieldErrors != nil {
 		return &Account{}, newAccountFieldErrors
@@ -167,7 +168,7 @@ func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 		if err != nil {
 			return nil, err
 		}
-		innerAccount, err := GOHMoney.NewAccount(name, start, GOHMoney.NullTime(end))
+		innerAccount, err := account.New(name, start, GOHMoney.NullTime(end))
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +187,7 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 	if err := row.Scan(&id, &name, &start, &end, &deletedAt); err != nil {
 		return nil, err
 	}
-	innerAccount, err := GOHMoney.NewAccount(name, start, GOHMoney.NullTime(end))
+	innerAccount, err := account.New(name, start, GOHMoney.NullTime(end))
 	if err != nil {
 		return nil, err
 	}
@@ -197,14 +198,14 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 }
 
 // Update updates an Account entry in a given db, returning any errors that are present with the validity of the original Account or update Account.
-func (original Account) Update(db *sql.DB, update GOHMoney.Account) (Account, error) {
-	if err := original.Validate(db); err != nil {
+func (a Account) Update(db *sql.DB, update account.Account) (Account, error) {
+	if err := a.Validate(db); err != nil {
 		return Account{}, err
 	}
 	if err := update.Validate(); err != nil {
 		return Account{}, errors.New(`Update Account is not valid: ` + err.Error())
 	}
-	balances, err := original.Balances(db)
+	balances, err := a.Balances(db)
 	if err != nil {
 		return Account{}, errors.New("Error selecting balances for validation: " + err.Error())
 	}
@@ -214,7 +215,7 @@ func (original Account) Update(db *sql.DB, update GOHMoney.Account) (Account, er
 		}
 	}
 	account, err := scanRowForAccount(
-		db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), pq.NullTime(update.End()), original.Id),
+		db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), pq.NullTime(update.End()), a.Id),
 	)
 	return *account, err
 }
@@ -248,7 +249,7 @@ func (a Account) Validate(db *sql.DB) error {
 	if a.deletedAt.Valid && b.deletedAt.Valid && !a.deletedAt.Time.Equal(b.deletedAt.Time) {
 		return AccountDifferentInDbAndRuntime
 	}
-	if !a.Account.Equal(&b.Account) {
+	if !a.Account.Equal(b.Account) {
 		return AccountDifferentInDbAndRuntime
 	}
 	if err := a.Account.Validate(); err != nil {
