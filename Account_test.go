@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney"
-	"github.com/GlynOwenHanmer/GOHMoneyDB"
 	"github.com/GlynOwenHanmer/GOHMoney/account"
 	"github.com/GlynOwenHanmer/GOHMoney/balance"
+	"github.com/GlynOwenHanmer/GOHMoneyDB"
+	gohtime "github.com/GlynOwenHanmer/go-time"
 )
 
 func Test_CreateAccount(t *testing.T) {
@@ -19,18 +19,18 @@ func Test_CreateAccount(t *testing.T) {
 	testSets := []struct {
 		name                 string
 		start, expectedStart time.Time
-		end, expectedEnd     GOHMoney.NullTime
+		end, expectedEnd     gohtime.NullTime
 		error
 	}{
 		{
 			name:          "TEST_ACCOUNT",
 			start:         now,
 			expectedStart: now,
-			end: GOHMoney.NullTime{
+			end: gohtime.NullTime{
 				Valid: true,
 				Time:  now.AddDate(1, 0, 0),
 			},
-			expectedEnd: GOHMoney.NullTime{
+			expectedEnd: gohtime.NullTime{
 				Valid: true,
 				Time:  now.AddDate(1, 0, 0),
 			},
@@ -40,16 +40,16 @@ func Test_CreateAccount(t *testing.T) {
 			name:          "TEST_ACCOUNT",
 			start:         now,
 			expectedStart: now,
-			end:           GOHMoney.NullTime{Valid: false},
-			expectedEnd:   GOHMoney.NullTime{Valid: false},
+			end:           gohtime.NullTime{Valid: false},
+			expectedEnd:   gohtime.NullTime{Valid: false},
 			error:         nil,
 		},
 		{
 			name:          "Account With'Apostrophe",
 			start:         now,
 			expectedStart: now,
-			end:           GOHMoney.NullTime{Valid: false},
-			expectedEnd:   GOHMoney.NullTime{Valid: false},
+			end:           gohtime.NullTime{Valid: false},
+			expectedEnd:   gohtime.NullTime{Valid: false},
 			error:         nil,
 		},
 	}
@@ -67,8 +67,8 @@ func Test_CreateAccount(t *testing.T) {
 		if testSet.error == nil && err != nil || testSet.error != nil && err == nil {
 			t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
 		}
-		if _, testSetErrIsNewAccountFieldError := testSet.error.(GOHMoney.AccountFieldError); testSetErrIsNewAccountFieldError {
-			if _, actualErrorIsNewAccountFieldError := err.(GOHMoney.AccountFieldError); !actualErrorIsNewAccountFieldError {
+		if _, testSetErrIsNewAccountFieldError := testSet.error.(account.FieldError); testSetErrIsNewAccountFieldError {
+			if _, actualErrorIsNewAccountFieldError := err.(account.FieldError); !actualErrorIsNewAccountFieldError {
 				t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
 			}
 		}
@@ -93,7 +93,7 @@ func Test_SelectAccounts(t *testing.T) {
 	}
 	accounts, err := GOHMoneyDB.SelectAccounts(db)
 	if err != nil {
-		if _, ok := err.(GOHMoney.AccountFieldError); !ok {
+		if _, ok := err.(account.FieldError); !ok {
 			t.Errorf("Unexpected error type when selecting accounts. Error: %s", err.Error())
 		}
 	}
@@ -253,7 +253,7 @@ func newTestAccount() account.Account {
 	account, err := account.New(
 		"TEST_ACCOUNT",
 		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
-		GOHMoney.NullTime{
+		gohtime.NullTime{
 			Valid: true,
 			Time:  time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
 		},
@@ -274,12 +274,12 @@ func newTestDBAccount(db *sql.DB) GOHMoneyDB.Account {
 
 func TestAccount_UpdateAccount(t *testing.T) {
 	now := time.Now()
-	original, err := account.New("TEST_ACCOUNT", now, GOHMoney.NullTime{})
+	original, err := account.New("TEST_ACCOUNT", now, gohtime.NullTime{})
 	if err != nil {
 		t.Fatalf("Error creating a for testing: %s", err)
 	}
 	updatedStart := now.AddDate(1, 0, 0)
-	updatedEnd := GOHMoney.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
+	updatedEnd := gohtime.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
 	update, err := account.New("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
 	if err != nil {
 		t.Fatalf("Error creating a for testing: %s", err)
@@ -299,7 +299,7 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	expected, err := account.New(
 		update.Name,
 		update.Start().Truncate(24*time.Hour),
-		GOHMoney.NullTime{
+		gohtime.NullTime{
 			Valid: update.End().Valid,
 			Time:  update.End().Time.Truncate(24 * time.Hour),
 		},
@@ -337,7 +337,7 @@ func TestAccount_JsonLoop(t *testing.T) {
 	innerAccount, err := account.New(
 		"TEST",
 		time.Now(),
-		GOHMoney.NullTime{
+		gohtime.NullTime{
 			Valid: true,
 			Time:  time.Now().AddDate(1, 0, 0),
 		},

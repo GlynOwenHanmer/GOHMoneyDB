@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"io"
+	"log"
 	"os"
 	"os/user"
 )

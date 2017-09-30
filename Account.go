@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/GlynOwenHanmer/GOHMoney/account"
 	gohtime "github.com/GlynOwenHanmer/go-time"
+	"github.com/lib/pq"
 )
 
 const (

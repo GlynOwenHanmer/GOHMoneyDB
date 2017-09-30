@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney"
-	"github.com/GlynOwenHanmer/GOHMoney/balance"
 	"github.com/GlynOwenHanmer/GOHMoney/account"
+	"github.com/GlynOwenHanmer/GOHMoney/balance"
+	gohtime "github.com/GlynOwenHanmer/go-time"
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
@@ -293,7 +293,7 @@ func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
 	}
 	update := balance.Balance{Date: account.Start().AddDate(-1, 0, 0)}
 	_, err = account.UpdateBalance(db, createdBalance, update)
-	expectedError := `Update is not valid for account: ` + GOHMoney.BalanceDateOutOfAccountTimeRange{}.Error()
+	expectedError := `Update is not valid for account: ` + balance.DateOutOfAccountTimeRange{}.Error()
 	if err == nil {
 		t.Errorf("Expected error but got nil.")
 	} else if err.Error() != expectedError {
@@ -450,7 +450,7 @@ func newTestAccount() account.Account {
 	account, err := account.New(
 		"TEST_ACCOUNT",
 		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
-		GOHMoney.NullTime{
+		gohtime.NullTime{
 			Valid: true,
 			Time:  time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
 		},
