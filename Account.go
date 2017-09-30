@@ -44,9 +44,9 @@ func (a Account) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON attempts to unmarshal a json blob into an Account object and returns any errors with the unmarshalling or unmarshalled account.
-func (a *Account) UnmarshalJSON(data []byte) error {
+func (a *Account) UnmarshalJSON(data []byte) (err error) {
 	var helper accountJSONHelper
-	if err := json.Unmarshal(data, &helper); err != nil {
+	if err = json.Unmarshal(data, &helper); err != nil {
 		return err
 	}
 	innerAccount, err := account.New(helper.Name, helper.Start, helper.End)
@@ -55,7 +55,10 @@ func (a *Account) UnmarshalJSON(data []byte) error {
 	}
 	a.ID = helper.ID
 	a.Account = innerAccount
-	return a.Account.Validate()
+	if vErr := a.Account.Validate(); vErr != nil {
+		err = vErr
+	}
+	return
 }
 
 // Accounts holds multiple Account items.

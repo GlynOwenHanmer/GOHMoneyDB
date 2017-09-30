@@ -358,7 +358,9 @@ func TestAccount_JsonLoop(t *testing.T) {
 		t.Fatalf("Error marshalling account into json. Error: %s", err.Error())
 	}
 	var finalAccount GOHMoneyDB.Account
-	json.Unmarshal(originalBytes, &finalAccount)
+	if err := json.Unmarshal(originalBytes, &finalAccount); err != nil {
+		t.Fatalf("Error unmarshalling account: %s", err)
+	}
 	logBytes := func(t *testing.T) { t.Log("Marshalled account: " + string(originalBytes)) }
 	if finalAccount.ID != originalAccount.ID {
 		t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", originalAccount.ID, finalAccount.ID)
@@ -371,6 +373,62 @@ func TestAccount_JsonLoop(t *testing.T) {
 	if originalAccount.End().Valid != finalAccount.End().Valid || !originalAccount.End().Time.Equal(finalAccount.End().Time) {
 		t.Errorf("Unexpected account End. \n\tExpected: %s\n\tActual  : %s", originalAccount.End(), finalAccount.End())
 		logBytes(t)
+	}
+}
+
+func TestAccounts_JSONLoop(t *testing.T) {
+	var innerAccounts account.Accounts
+	numOfAccounts := 100
+	for i := 0; i < numOfAccounts; i++ {
+		innerAccount, err := account.New(
+			"TEST",
+			time.Now(),
+			gohtime.NullTime{
+				Valid: true,
+				Time:  time.Now().AddDate(1, 0, 0),
+			},
+		)
+		if err != nil {
+			t.Fatalf("Error creating new account for testing. Error: %s", err.Error())
+		}
+		innerAccounts = append(innerAccounts, innerAccount)
+	}
+	db, err := prepareTestDB()
+	if err != nil {
+		t.Fatalf("Error preparing db for testing: %s", err)
+	}
+	var originalAccounts GOHMoneyDB.Accounts
+	for i := 0; i < len(innerAccounts); i++ {
+		originalAccount, err := GOHMoneyDB.CreateAccount(db, innerAccounts[i])
+		if err != nil {
+			t.Fatalf("Error creating DB account for testing: %s", err)
+		}
+		originalAccounts = append(originalAccounts, *originalAccount)
+	}
+	originalBytes, err := json.Marshal(originalAccounts)
+	if err != nil {
+		t.Fatalf("Error marshalling account into json. Error: %s", err.Error())
+	}
+	var finalAccounts GOHMoneyDB.Accounts
+	if err := json.Unmarshal(originalBytes, &finalAccounts); err != nil {
+		t.Fatalf("Error unmarshalling accounts json: %s", err)
+	}
+	logBytes := func(t *testing.T) { t.Log("Marshalled accounts: " + string(originalBytes)) }
+	for i := 0; i < len(innerAccounts); i++ {
+		final := finalAccounts[i]
+		original := originalAccounts[i]
+		if final.ID != original.ID {
+			t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", original.ID, final.ID)
+			logBytes(t)
+		}
+		if !original.Start().Equal(final.Start()) {
+			t.Errorf("Unexpected account Start.\n\tExpected: %s\n\tActual  : %s", original.Start(), final.Start())
+			logBytes(t)
+		}
+		if original.End().Valid != final.End().Valid || !original.End().Time.Equal(final.End().Time) {
+			t.Errorf("Unexpected account End. \n\tExpected: %s\n\tActual  : %s", original.End(), final.End())
+			logBytes(t)
+		}
 	}
 }
 
