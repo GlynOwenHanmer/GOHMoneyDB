@@ -8,10 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney"
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 	"github.com/GlynOwenHanmer/GOHMoney/account"
+	gohtime "github.com/GlynOwenHanmer/go-time"
 )
 
 const (
@@ -23,7 +22,7 @@ const (
 type Account struct {
 	Id uint
 	account.Account
-	deletedAt GOHMoney.NullTime
+	deletedAt gohtime.NullTime
 }
 
 // accountJsonHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
@@ -31,7 +30,7 @@ type accountJsonHelper struct {
 	Id    uint
 	Name  string
 	Start time.Time
-	End   GOHMoney.NullTime
+	End   gohtime.NullTime
 }
 
 // MarshalJSON Marshals an Account into json bytes and an error
@@ -168,11 +167,11 @@ func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 		if err != nil {
 			return nil, err
 		}
-		innerAccount, err := account.New(name, start, GOHMoney.NullTime(end))
+		innerAccount, err := account.New(name, start, gohtime.NullTime(end))
 		if err != nil {
 			return nil, err
 		}
-		openAccounts = append(openAccounts, Account{Id: id, Account: innerAccount, deletedAt: GOHMoney.NullTime(deletedAt)})
+		openAccounts = append(openAccounts, Account{Id: id, Account: innerAccount, deletedAt: gohtime.NullTime(deletedAt)})
 	}
 	return &openAccounts, rows.Err()
 }
@@ -187,14 +186,14 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 	if err := row.Scan(&id, &name, &start, &end, &deletedAt); err != nil {
 		return nil, err
 	}
-	innerAccount, err := account.New(name, start, GOHMoney.NullTime(end))
+	innerAccount, err := account.New(name, start, gohtime.NullTime(end))
 	if err != nil {
 		return nil, err
 	}
 	if deletedAt.Valid {
 		err = AccountDeleted
 	}
-	return &Account{Id: id, Account: innerAccount, deletedAt: GOHMoney.NullTime(deletedAt)}, err
+	return &Account{Id: id, Account: innerAccount, deletedAt: gohtime.NullTime(deletedAt)}, err
 }
 
 // Update updates an Account entry in a given db, returning any errors that are present with the validity of the original Account or update Account.
@@ -230,7 +229,7 @@ func (a *Account) Delete(db *sql.DB) error {
 		db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+selectFields, deletedAt, a.Id),
 	)
 	if err == AccountDeleted {
-		a.deletedAt = GOHMoney.NullTime(deletedAt)
+		a.deletedAt = gohtime.NullTime(deletedAt)
 		return nil
 	}
 	if err != nil {
