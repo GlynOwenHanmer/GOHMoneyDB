@@ -14,48 +14,48 @@ import (
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
-	invalidIds := []uint{0, 99999}
+	invalidIDs := []uint{0, 99999}
 	db, err := prepareTestDB()
 	defer db.Close()
 	if err != nil {
 		t.Fatalf("Unable to open DB connection. Error: %s", err)
 	}
-	for _, invalidId := range invalidIds {
-		balances, err := selectBalancesForAccount(db, invalidId)
+	for _, invalidID := range invalidIDs {
+		balances, err := selectBalancesForAccount(db, invalidID)
 		if err != nil {
-			t.Errorf("account Id: %d, expected nil error but got: %s", invalidId, err.Error())
+			t.Errorf("account ID: %d, expected nil error but got: %s", invalidID, err.Error())
 		}
 		if len(balances) != 0 {
-			t.Errorf("account Id: %d, expected no balances but got: %s", invalidId, balances)
+			t.Errorf("account ID: %d, expected no balances but got: %s", invalidID, balances)
 		}
 	}
 }
 
 func Test_BalancesForValidAccountId(t *testing.T) {
-	validId := uint(1)
+	validID := uint(1)
 	db, err := prepareTestDB()
 	defer db.Close()
 	if err != nil {
 		t.Fatalf("Unable to open DB connection. Error: %s", err)
 	}
-	balances, err := selectBalancesForAccount(db, validId)
+	balances, err := selectBalancesForAccount(db, validID)
 	if err != nil {
-		t.Errorf("Id: %d, expected nil error but got: %s", validId, err.Error())
+		t.Errorf("ID: %d, expected nil error but got: %s", validID, err.Error())
 	}
 	minBalances := 91
 	if len(balances) < minBalances {
-		t.Errorf("account Id: %d, expected at least %d balances but got: %d", validId, minBalances, len(balances))
+		t.Errorf("account ID: %d, expected at least %d balances but got: %d", validID, minBalances, len(balances))
 		return
 	}
-	expectedId := uint(1)
-	actualId := balances[0].Id
-	if expectedId != actualId {
-		t.Errorf(`Unexpected Balance Id.\nExpected: %d\nActual:  %d`, expectedId, actualId)
+	expectedID := uint(1)
+	actualID := balances[0].ID
+	if expectedID != actualID {
+		t.Errorf(`Unexpected Balance ID.\nExpected: %d\nActual:  %d`, expectedID, actualID)
 	}
 	expectedAmount := float32(636.42)
 	actualAmount := balances[0].Amount
 	if actualAmount != expectedAmount {
-		t.Errorf("account Id: %d, first balance, expected balance amount of %f but got %f", validId, expectedAmount, actualAmount)
+		t.Errorf("account ID: %d, first balance, expected balance amount of %f but got %f", validID, expectedAmount, actualAmount)
 	}
 	expectedDate, err := parseDateString("2016-06-17")
 	if err != nil {
@@ -63,21 +63,21 @@ func Test_BalancesForValidAccountId(t *testing.T) {
 	}
 	actualDate := balances[0].Date
 	if !expectedDate.Equal(actualDate) {
-		t.Errorf("account Id: %d, first balance, expected date of %s but got %s", validId, expectedDate, actualDate)
+		t.Errorf("account ID: %d, first balance, expected date of %s but got %s", validID, expectedDate, actualDate)
 	}
 }
 
 func Test_BalanceInsert(t *testing.T) {
-	accountId := uint(1)
+	accountID := uint(1)
 	db, err := prepareTestDB()
 	defer db.Close()
 	if err != nil {
 		t.Fatalf("Unable to open DB connection. Error: %s", err)
 	}
-	initialLastId := getHighestBalanceId(db, t)
-	account, err := SelectAccountWithID(db, accountId)
+	initialLastID := getHighestBalanceID(db, t)
+	account, err := SelectAccountWithID(db, accountID)
 	if err != nil {
-		t.Errorf("Error selecting account with Id %d for testing: %s", accountId, err.Error())
+		t.Errorf("Error selecting account with ID %d for testing: %s", accountID, err.Error())
 	}
 	dbAccount := Account(account)
 	startingBalances, err := dbAccount.Balances(db)
@@ -89,8 +89,8 @@ func Test_BalanceInsert(t *testing.T) {
 	if err != balance.BalanceZeroDate {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", balance.BalanceZeroDate, err)
 	}
-	if insertedBalance.Id != 0 {
-		t.Errorf("Expected uninitialised Balance id of 0, got %d", insertedBalance.Id)
+	if insertedBalance.ID != 0 {
+		t.Errorf("Expected uninitialised Balance id of 0, got %d", insertedBalance.ID)
 	}
 	if !insertedBalance.Date.IsZero() {
 		t.Errorf("Inserted balance date should be zero but is: %s", insertedBalance.Date.String())
@@ -98,8 +98,8 @@ func Test_BalanceInsert(t *testing.T) {
 	if insertedBalance.Amount != 0 {
 		t.Errorf("Inserted balance amount should be %f but is %f", 0, insertedBalance.Amount)
 	}
-	if insertedBalance.Id != 0 {
-		t.Errorf("Inserted balance Id should be %d but is %d", 0, insertedBalance.Id)
+	if insertedBalance.ID != 0 {
+		t.Errorf("Inserted balance ID should be %d but is %d", 0, insertedBalance.ID)
 	}
 	balancesAfterTest, err := dbAccount.Balances(db)
 	if err != nil {
@@ -118,8 +118,8 @@ func Test_BalanceInsert(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", nil, err)
 	}
-	if insertedBalance.Id != initialLastId+1 {
-		t.Errorf("Expected Id to incremement by 1.\nInitial last Id: %d\nInserted Balance Id: %d", initialLastId, insertedBalance.Id)
+	if insertedBalance.ID != initialLastID+1 {
+		t.Errorf("Expected ID to incremement by 1.\nInitial last ID: %d\nInserted Balance ID: %d", initialLastID, insertedBalance.ID)
 	}
 	if !insertedBalance.Date.Equal(validDate.Truncate(time.Hour * 24)) {
 		t.Errorf("Inserted balance date should be %s but is %s", validDate, insertedBalance.Date.String())
@@ -142,24 +142,24 @@ func Test_BalanceInsert(t *testing.T) {
 	}
 }
 
-func getHighestBalanceId(db *sql.DB, t *testing.T) uint {
-	initialLastId := uint(0)
+func getHighestBalanceID(db *sql.DB, t *testing.T) uint {
+	initialLastID := uint(0)
 	allAccounts, err := SelectAccounts(db)
 	if err != nil {
 		t.Fatalf("Error selecting all Balances for testing: %s", err.Error())
 	}
 	for _, account := range *allAccounts {
-		balances, err := selectBalancesForAccount(db, account.Id)
+		balances, err := selectBalancesForAccount(db, account.ID)
 		if err != nil {
 			t.Fatalf("Error selecting balances for testing: %s", err.Error())
 		}
 		for _, balance := range balances {
-			if balance.Id > initialLastId {
-				initialLastId = balance.Id
+			if balance.ID > initialLastID {
+				initialLastID = balance.ID
 			}
 		}
 	}
-	return initialLastId
+	return initialLastID
 }
 
 func TestAccount_ValidateBalance(t *testing.T) {
@@ -176,13 +176,13 @@ func TestAccount_ValidateBalance(t *testing.T) {
 		t.Fatalf(`Error inserting new balance for testing. Error :%s`, err)
 	}
 	outOfDateRange := Balance{
-		Id: account.Id,
+		ID: account.ID,
 		Balance: balance.Balance{
 			Date: time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC),
 		},
 	}
 	balanceWithWrongOwner := Balance{
-		Id:      account.Id - 1,
+		ID:      account.ID - 1,
 		Balance: validBalance.Balance,
 	}
 	testSets := []struct {
@@ -203,7 +203,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 		{
 			account: account,
 			balance: balanceWithWrongOwner,
-			error:   InvalidAccountBalanceError{AccountId: account.Id, BalanceId: balanceWithWrongOwner.Id},
+			error:   InvalidAccountBalanceError{AccountID: account.ID, BalanceID: balanceWithWrongOwner.ID},
 		},
 	}
 	for _, testSet := range testSets {
@@ -240,7 +240,7 @@ func Test_UpdateBalance_WrongAccount(t *testing.T) {
 		Amount: 100,
 	}
 	updatedBalance, err := account1.UpdateBalance(db, createdBalance0, update)
-	expectedError := InvalidAccountBalanceError{AccountId: account1.Id, BalanceId: createdBalance0.Id}
+	expectedError := InvalidAccountBalanceError{AccountID: account1.ID, BalanceID: createdBalance0.ID}
 	if err != expectedError {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
 	}
@@ -324,8 +324,8 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 	if err != expectedError {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
 	}
-	if updatedBalance.Id != updatedBalance.Id {
-		t.Errorf("Balance Id changed when updating Balance\n\tOriginal: %d\n\tFinal   : %d", createdBalance.Id, updatedBalance.Id)
+	if updatedBalance.ID != updatedBalance.ID {
+		t.Errorf("Balance ID changed when updating Balance\n\tOriginal: %d\n\tFinal   : %d", createdBalance.ID, updatedBalance.ID)
 	}
 	expectedDate := update.Date.Truncate(time.Hour * 24)
 	if !updatedBalance.Balance.Date.Equal(expectedDate) {
@@ -418,7 +418,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 			insertedBalances[1],
 		},
 		{
-			// Multiple balances match date. Should return one with highest Id (latest inserted)
+			// Multiple balances match date. Should return one with highest ID (latest inserted)
 			balances[2].Date,
 			nil,
 			insertedBalances[3],

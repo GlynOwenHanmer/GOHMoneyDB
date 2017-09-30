@@ -129,12 +129,12 @@ func Test_SelectAccountWithId(t *testing.T) {
 	}{
 		{
 			id:            0,
-			expectedError: GOHMoneyDB.NoAccountWithIdError(0),
+			expectedError: GOHMoneyDB.NoAccountWithIDError(0),
 		},
 		{
 			// Max for postgres smallint value
 			id:            32767,
-			expectedError: GOHMoneyDB.NoAccountWithIdError(32767),
+			expectedError: GOHMoneyDB.NoAccountWithIDError(32767),
 		},
 		{
 			id:            10,
@@ -160,11 +160,11 @@ func Test_SelectAccountWithId(t *testing.T) {
 		if test.expectedError != err {
 			t.Errorf("Unexpected errors\nExpected: %v\nActual  : %v", test.expectedError, err)
 		}
-		if _, noAccount := err.(GOHMoneyDB.NoAccountWithIdError); noAccount {
+		if _, noAccount := err.(GOHMoneyDB.NoAccountWithIDError); noAccount {
 			continue
 		}
-		if test.id != account.Id {
-			t.Errorf("Unexpected Account Id\nExpected: %d\nActual  : %d", test.id, account.Id)
+		if test.id != account.ID {
+			t.Errorf("Unexpected Account ID\nExpected: %d\nActual  : %d", test.id, account.ID)
 		}
 		if test.name != account.Name {
 			t.Errorf("Unexpected Account name\nExpected: %s\nActual  : %s", test.name, account.Name)
@@ -179,7 +179,7 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 	}
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	// Account with no Balances
-	_, err = account.SelectBalanceWithId(db, 10)
+	_, err = account.SelectBalanceWithID(db, 10)
 	expectedErr := GOHMoneyDB.NoBalances
 	if err != expectedErr {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
@@ -194,12 +194,12 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error occurred whilst inserting Balance for testing. Error: %s", err)
 	}
-	if validBalance.Id < 1 {
-		t.Fatalf("Inserted balance returned balance of less than 1 so cannot be subtracted from to make invalid uint Balance Id")
+	if validBalance.ID < 1 {
+		t.Fatalf("Inserted balance returned balance of less than 1 so cannot be subtracted from to make invalid uint Balance ID")
 	}
-	invalidBalanceId := validBalance.Id - 1
+	invalidBalanceId := validBalance.ID - 1
 	// Account with Balances
-	_, err = account.SelectBalanceWithId(db, invalidBalanceId)
+	_, err = account.SelectBalanceWithID(db, invalidBalanceId)
 	if err != expectedErr {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
 	}
@@ -221,12 +221,12 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 		)
 	}
 	for _, balance := range balances {
-		selectedBalance, err := account.SelectBalanceWithId(db, balance.Id)
+		selectedBalance, err := account.SelectBalanceWithID(db, balance.ID)
 		if err != nil {
 			t.Errorf("Expected nil error but recieved error: %s", err)
 		}
 		switch {
-		case selectedBalance.Id != balance.Id,
+		case selectedBalance.ID != balance.ID,
 			selectedBalance.Amount != balance.Amount,
 			!selectedBalance.Date.Equal(balance.Date):
 			t.Errorf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance)
@@ -239,9 +239,9 @@ func checkAccountsSortedByIdAscending(accounts GOHMoneyDB.Accounts, t *testing.T
 		account := accounts[i]
 		nextAccount := accounts[i+1]
 		switch {
-		case account.Id > nextAccount.Id:
+		case account.ID > nextAccount.ID:
 			var message bytes.Buffer
-			fmt.Fprintf(&message, "Accounts not returned sorted by Id. Id %d appears before %d.\n", account.Id, nextAccount.Id)
+			fmt.Fprintf(&message, "Accounts not returned sorted by ID. ID %d appears before %d.\n", account.ID, nextAccount.ID)
 			fmt.Fprintf(&message, "accounts[%d]: %s", i, account)
 			fmt.Fprintf(&message, "accounts[%d]: %s", i+1, nextAccount)
 			t.Errorf(message.String())
@@ -328,8 +328,8 @@ func TestAccount_Delete(t *testing.T) {
 	valid := account.Validate(db)
 	if valid == nil {
 		t.Fatalf("Account still valid after deletion.")
-	} else if valid != GOHMoneyDB.AccountDeleted {
-		t.Fatalf("Validity error not as expected. Expected %s, got %s.", GOHMoneyDB.AccountDeleted, valid)
+	} else if valid != GOHMoneyDB.ErrAccountDeleted {
+		t.Fatalf("Validity error not as expected. Expected %s, got %s.", GOHMoneyDB.ErrAccountDeleted, valid)
 	}
 }
 
@@ -360,8 +360,8 @@ func TestAccount_JsonLoop(t *testing.T) {
 	var finalAccount GOHMoneyDB.Account
 	json.Unmarshal(originalBytes, &finalAccount)
 	logBytes := func(t *testing.T) { t.Log("Marshalled account: " + string(originalBytes)) }
-	if finalAccount.Id != originalAccount.Id {
-		t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", originalAccount.Id, finalAccount.Id)
+	if finalAccount.ID != originalAccount.ID {
+		t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", originalAccount.ID, finalAccount.ID)
 		logBytes(t)
 	}
 	if !originalAccount.Start().Equal(finalAccount.Start()) {
@@ -385,12 +385,12 @@ func TestAccount_Validate(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected expected but none returned.")
 	}
-	if expected := GOHMoneyDB.NoAccountWithIdError(0); err != expected {
+	if expected := GOHMoneyDB.NoAccountWithIDError(0); err != expected {
 		t.Errorf("Expected error %s, but got %s", expected, err)
 	}
-	invalid.Id = 5
+	invalid.ID = 5
 	err = invalid.Validate(db)
-	if expected := GOHMoneyDB.AccountDifferentInDbAndRuntime; err != expected {
+	if expected := GOHMoneyDB.ErrAccountDifferentInDbAndRuntime; err != expected {
 		t.Errorf("Expected error %s, but got %s", expected, err)
 	}
 

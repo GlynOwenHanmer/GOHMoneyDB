@@ -20,14 +20,14 @@ const (
 
 // Account holds logic for an Account item that is held within a GOHMoney database.
 type Account struct {
-	Id uint
+	ID uint
 	account.Account
 	deletedAt gohtime.NullTime
 }
 
-// accountJsonHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
-type accountJsonHelper struct {
-	Id    uint
+// accountJSONHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
+type accountJSONHelper struct {
+	ID    uint
 	Name  string
 	Start time.Time
 	End   gohtime.NullTime
@@ -35,8 +35,8 @@ type accountJsonHelper struct {
 
 // MarshalJSON Marshals an Account into json bytes and an error
 func (a Account) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&accountJsonHelper{
-		Id:    a.Id,
+	return json.Marshal(&accountJSONHelper{
+		ID:    a.ID,
 		Name:  a.Name,
 		Start: a.Start(),
 		End:   a.End(),
@@ -45,7 +45,7 @@ func (a Account) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON attempts to unmarshal a json blob into an Account object and returns any errors with the unmarshalling or unmarshalled account.
 func (a *Account) UnmarshalJSON(data []byte) error {
-	var helper accountJsonHelper
+	var helper accountJSONHelper
 	if err := json.Unmarshal(data, &helper); err != nil {
 		return err
 	}
@@ -53,12 +53,9 @@ func (a *Account) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	a.Id = helper.Id
+	a.ID = helper.ID
 	a.Account = innerAccount
-	if err := a.Account.Validate(); err != nil {
-		return err
-	}
-	return nil
+	return a.Account.Validate()
 }
 
 // Accounts holds multiple Account items.
@@ -74,18 +71,18 @@ func (a Account) ValidateBalance(db *sql.DB, balance Balance) error {
 	if err != nil {
 		return err
 	}
-	balances, err := selectBalancesForAccount(db, a.Id)
+	balances, err := selectBalancesForAccount(db, a.ID)
 	if err != nil {
 		return err
 	}
 	for _, accountBalance := range balances {
-		if accountBalance.Id == balance.Id {
+		if accountBalance.ID == balance.ID {
 			return nil
 		}
 	}
 	return InvalidAccountBalanceError{
-		AccountId: a.Id,
-		BalanceId: balance.Id,
+		AccountID: a.ID,
+		BalanceID: balance.ID,
 	}
 }
 
@@ -112,7 +109,7 @@ func SelectAccountsOpen(db *sql.DB) (Accounts, error) {
 	return *openAccounts, err
 }
 
-// SelectAccountWithId returns the Account from the DB with the given Id value along with any error that occurs whilst attempting to retrieve the Account.
+// SelectAccountWithID returns the Account from the DB with the given ID value along with any error that occurs whilst attempting to retrieve the Account.
 func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 	if db == nil {
 		return Account{}, errors.New("nil db pointer")
@@ -120,7 +117,7 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 	row := db.QueryRow("SELECT "+selectFields+" FROM accounts WHERE id = $1;", id)
 	account, err := scanRowForAccount(row)
 	if err == sql.ErrNoRows {
-		err = NoAccountWithIdError(id)
+		err = NoAccountWithIDError(id)
 	}
 	if account == nil {
 		account = &Account{}
@@ -142,16 +139,16 @@ func CreateAccount(db *sql.DB, newAccount account.Account) (*Account, error) {
 	return scanRowForAccount(row)
 }
 
-// SelectBalanceWithId returns a Balance from the database that has the given ID if the account is the correct one that it belongs to.
-// Otherwise, SelectBalanceWithId returns an empty Balance object and an error.
-func (a Account) SelectBalanceWithId(db *sql.DB, id uint) (*Balance, error) {
+// SelectBalanceWithID returns a Balance from the database that has the given ID if the account is the correct one that it belongs to.
+// Otherwise, SelectBalanceWithID returns an empty Balance object and an error.
+func (a Account) SelectBalanceWithID(db *sql.DB, id uint) (*Balance, error) {
 	if err := a.Validate(db); err != nil {
 		return &Balance{}, err
 	}
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `SELECT %s FROM balances b JOIN accounts a ON b.account_id = a.id `, bBalanceSelectFields)
 	fmt.Fprint(&query, `WHERE a.deleted_at IS NULL AND b.account_id = $1 AND b.id = $2`)
-	row := db.QueryRow(query.String(), a.Id, id)
+	row := db.QueryRow(query.String(), a.ID, id)
 	return scanRowForBalance(row)
 }
 
@@ -171,13 +168,13 @@ func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
 		if err != nil {
 			return nil, err
 		}
-		openAccounts = append(openAccounts, Account{Id: id, Account: innerAccount, deletedAt: gohtime.NullTime(deletedAt)})
+		openAccounts = append(openAccounts, Account{ID: id, Account: innerAccount, deletedAt: gohtime.NullTime(deletedAt)})
 	}
 	return &openAccounts, rows.Err()
 }
 
 // scanRowForAccount scans a single sql.Row for a Account object and returns any error occurring along the way.
-// If the account exists but has been marked as deleted, an AccountDeleted error will be returned along with the account.
+// If the account exists but has been marked as deleted, an ErrAccountDeleted error will be returned along with the account.
 func scanRowForAccount(row *sql.Row) (*Account, error) {
 	var id uint
 	var name string
@@ -191,9 +188,9 @@ func scanRowForAccount(row *sql.Row) (*Account, error) {
 		return nil, err
 	}
 	if deletedAt.Valid {
-		err = AccountDeleted
+		err = ErrAccountDeleted
 	}
-	return &Account{Id: id, Account: innerAccount, deletedAt: gohtime.NullTime(deletedAt)}, err
+	return &Account{ID: id, Account: innerAccount, deletedAt: gohtime.NullTime(deletedAt)}, err
 }
 
 // Update updates an Account entry in a given db, returning any errors that are present with the validity of the original Account or update Account.
@@ -210,11 +207,11 @@ func (a Account) Update(db *sql.DB, update account.Account) (Account, error) {
 	}
 	for _, b := range balances {
 		if err := update.ValidateBalance(b.Balance); err != nil {
-			return Account{}, errors.New(fmt.Sprintf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.Id, err))
+			return Account{}, fmt.Errorf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.ID, err)
 		}
 	}
 	account, err := scanRowForAccount(
-		db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), pq.NullTime(update.End()), a.Id),
+		db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), pq.NullTime(update.End()), a.ID),
 	)
 	return *account, err
 }
@@ -226,9 +223,9 @@ func (a *Account) Delete(db *sql.DB) error {
 	}
 	deletedAt := pq.NullTime{Valid: true, Time: time.Now()}
 	_, err := scanRowForAccount(
-		db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+selectFields, deletedAt, a.Id),
+		db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+selectFields, deletedAt, a.ID),
 	)
-	if err == AccountDeleted {
+	if err == ErrAccountDeleted {
 		a.deletedAt = gohtime.NullTime(deletedAt)
 		return nil
 	}
@@ -241,15 +238,15 @@ func (a *Account) Delete(db *sql.DB) error {
 
 // Validate returns any errors that are present with an Account object
 func (a Account) Validate(db *sql.DB) error {
-	b, err := SelectAccountWithID(db, a.Id)
+	b, err := SelectAccountWithID(db, a.ID)
 	if err != nil {
 		return err
 	}
 	if a.deletedAt.Valid && b.deletedAt.Valid && !a.deletedAt.Time.Equal(b.deletedAt.Time) {
-		return AccountDifferentInDbAndRuntime
+		return ErrAccountDifferentInDbAndRuntime
 	}
 	if !a.Account.Equal(b.Account) {
-		return AccountDifferentInDbAndRuntime
+		return ErrAccountDifferentInDbAndRuntime
 	}
 	if err := a.Account.Validate(); err != nil {
 		return nil

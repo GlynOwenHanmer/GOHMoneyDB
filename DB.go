@@ -25,7 +25,7 @@ func DbIsAvailable(db *sql.DB) bool {
 // LoadDBConnectionString will return the connection string and an error description if there is one.
 func LoadDBConnectionString(location string) (string, error) {
 	if len(location) < 1 {
-		return ``, errors.New("No connection string file location given.")
+		return ``, errors.New("no connection string file location given")
 	}
 	file, err := os.Open(location)
 	if err != nil {
@@ -56,7 +56,7 @@ func prepareTestDB() (*sql.DB, error) {
 		return nil, err
 	}
 	if len(usr.HomeDir) < 1 {
-		return nil, errors.New("No home directory for current user.")
+		return nil, errors.New("no home directory for current user")
 	}
 	connectionString, err := LoadDBConnectionString(usr.HomeDir + `/.gohmoneydbtestconnectionstring`)
 	if err != nil {
