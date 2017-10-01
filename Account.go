@@ -78,7 +78,7 @@ func (a Account) ValidateBalance(db *sql.DB, balance Balance) error {
 	if err != nil {
 		return err
 	}
-	for _, accountBalance := range balances {
+	for _, accountBalance := range *balances {
 		if accountBalance.ID == balance.ID {
 			return nil
 		}
@@ -101,15 +101,14 @@ func SelectAccounts(db *sql.DB) (*Accounts, error) {
 }
 
 // SelectAccountsOpen returns an Accounts item holding all Account entries within the given database that are open along with any errors occured whilst attempting to retrieve the Accounts.
-func SelectAccountsOpen(db *sql.DB) (Accounts, error) {
+func SelectAccountsOpen(db *sql.DB) (*Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts WHERE date_closed IS NULL AND deleted_at IS NULL ORDER BY id ASC;"
 	rows, err := db.Query(queryString)
 	if err != nil {
-		return Accounts{}, err
+		return &Accounts{}, err
 	}
 	defer rows.Close()
-	openAccounts, err := scanRowsForAccounts(rows)
-	return *openAccounts, err
+	return scanRowsForAccounts(rows)
 }
 
 // SelectAccountWithID returns the Account from the DB with the given ID value along with any error that occurs whilst attempting to retrieve the Account.
@@ -208,7 +207,7 @@ func (a Account) Update(db *sql.DB, update account.Account) (Account, error) {
 	if err != nil {
 		return Account{}, errors.New("Error selecting balances for validation: " + err.Error())
 	}
-	for _, b := range balances {
+	for _, b := range *balances {
 		if err := update.ValidateBalance(b.Balance); err != nil {
 			return Account{}, fmt.Errorf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.ID, err)
 		}

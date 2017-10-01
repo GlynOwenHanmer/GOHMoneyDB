@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/GlynOwenHanmer/GOHMoney/account"
-	"github.com/GlynOwenHanmer/GOHMoney/balance"
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
 	gohtime "github.com/GlynOwenHanmer/go-time"
 )
@@ -100,6 +99,9 @@ func Test_SelectAccounts(t *testing.T) {
 	if accounts == nil {
 		t.Fatalf("SelectAccounts returned nil Accounts object.\nError: %s", err)
 	}
+	if len(*accounts) == 0 {
+		t.Fatalf("No accounts were returned.")
+	}
 	checkAccountsSortedByIdAscending(*accounts, t)
 }
 
@@ -113,12 +115,15 @@ func Test_SelectAccountsOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error running SelectAccountsOpen method: %s", err)
 	}
-	for _, account := range openAccounts {
+	if len(*openAccounts) == 0 {
+		t.Fatalf("No accounts were returned.")
+	}
+	for _, account := range *openAccounts {
 		if !account.IsOpen() {
 			t.Errorf("SelectAccountsOpen returned closed account: %s", account)
 		}
 	}
-	checkAccountsSortedByIdAscending(openAccounts, t)
+	checkAccountsSortedByIdAscending(*openAccounts, t)
 }
 
 func Test_SelectAccountWithId(t *testing.T) {
@@ -185,12 +190,7 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
 	}
 
-	validBalance, err := account.InsertBalance(db,
-		balance.Balance{
-			Date:   account.Start().AddDate(0, 0, 10),
-			Amount: float32(10),
-		},
-	)
+	validBalance, err := account.InsertBalance(db,newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 10), 10))
 	if err != nil {
 		t.Fatalf("Error occurred whilst inserting Balance for testing. Error: %s", err)
 	}
@@ -213,12 +213,7 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	var balances [3]GOHMoneyDB.Balance
 	for i := 0; i < 3; i++ {
-		balances[i], err = account.InsertBalance(db,
-			balance.Balance{
-				Date:   account.Start().AddDate(0, 0, i),
-				Amount: float32(i),
-			},
-		)
+		balances[i], err = account.InsertBalance(db,newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, i), int64(i)))
 	}
 	for _, balance := range balances {
 		selectedBalance, err := account.SelectBalanceWithID(db, balance.ID)
@@ -227,8 +222,8 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 		}
 		switch {
 		case selectedBalance.ID != balance.ID,
-			selectedBalance.Amount != balance.Amount,
-			!selectedBalance.Date.Equal(balance.Date):
+			selectedBalance.Amount() != balance.Amount(),
+			!selectedBalance.Date().Equal(balance.Date()):
 			t.Errorf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance)
 		}
 	}

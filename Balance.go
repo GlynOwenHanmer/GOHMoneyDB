@@ -27,28 +27,19 @@ type Balances []Balance
 
 // Balances returns all Balances for a given Account and any errors that occur whilst attempting to retrieve the Balances.
 // The Balances are sorted by chronological order then by the id of the Balance in the DB
-func (a Account) Balances(db *sql.DB) (Balances, error) {
+func (a Account) Balances(db *sql.DB) (*Balances, error) {
 	return selectBalancesForAccount(db, a.ID)
 }
 
 // selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account ID number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
 // The Balances are sorted by chronological order then by the id of the Balance in the DB
-func selectBalancesForAccount(db *sql.DB, accountID uint) (Balances, error) {
+func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 	rows, err := db.Query("SELECT "+balanceSelectFields+" FROM balances b WHERE account_id = $1 ORDER BY date ASC, ID ASC", accountID)
 	if err != nil {
-		return Balances{}, err
+		return &Balances{}, err
 	}
 	defer rows.Close()
-	balances := Balances{}
-	for rows.Next() {
-		balance := Balance{}
-		err := rows.Scan(&balance.ID, &balance.Date, &balance.Amount)
-		if err != nil {
-			return nil, err
-		}
-		balances = append(balances, balance)
-	}
-	return balances, rows.Err()
+	return scanRowsForBalances(rows)
 }
 
 // InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
@@ -60,9 +51,9 @@ func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `INSERT INTO balances (%s) VALUES ($1, $2, $3) `, balanceInsertFields)
 	fmt.Fprintf(&query, `RETURNING %s;`, balanceSelectFields)
-	row := db.QueryRow(query.String(), a.ID, b.Date, b.Amount)
-	var insertedBalance Balance
-	return insertedBalance, row.Scan(&insertedBalance.ID, &insertedBalance.Date, &insertedBalance.Amount)
+	row := db.QueryRow(query.String(), a.ID, b.Date(), b.Amount())
+	balance, err := scanRowForBalance(row)
+	return *balance, err
 }
 
 // UpdateBalance updates a Balance entry in a given db for a given account and original Balance, returning any errors that are present with the validitiy of the Account, original Balance or update Balance.
@@ -76,7 +67,7 @@ func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.Bala
 	if err := a.Account.ValidateBalance(update); err != nil {
 		return Balance{}, errors.New(`Update is not valid for account: ` + err.Error())
 	}
-	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, update.Amount, update.Date, original.ID)
+	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, update.Amount(), update.Date(), original.ID)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
@@ -94,11 +85,51 @@ func (a Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error) {
 }
 
 // scanRowForBalance scans a single sql.Row for a Balance object and returns any error occurring along the way.
-func scanRowForBalance(row *sql.Row) (*Balance, error) {
-	var balance Balance
-	err := row.Scan(&balance.ID, &balance.Date, &balance.Amount)
+func scanRowForBalance(row *sql.Row) (b *Balance, err error) {
+	b = new(Balance)
+	var ID uint
+	var date time.Time
+	var amount float64
+	err = row.Scan(&ID, &date, &amount)
+	b, _ = newBalance(ID, date, amount)
 	if err == sql.ErrNoRows {
 		err = NoBalances
 	}
-	return &balance, err
+	if err != nil {
+		return
+	}
+	return b, b.Validate()
+}
+
+func newBalance(ID uint, d time.Time, a float64) (*Balance, error) {
+	innerB := new(balance.Balance)
+	var err error
+	*innerB, err = balance.New(d, balance.NewMoney(int64(a * 100)))
+	return &Balance{ID:ID, Balance:*innerB}, err
+}
+
+// scanRowsForBalance scans a sql.Rows for a Balances object and returns any error occurring along the way.
+func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
+	bs = new(Balances)
+	for rows.Next() {
+		var ID uint
+		var date time.Time
+		var amount float64
+		err = rows.Scan(&ID, &date, &amount)
+		if err != nil {
+			return nil, err
+		}
+		innerB, err := balance.New(date, balance.NewMoney(int64(amount * 100)))
+		if err != nil {
+			return nil, err
+		}
+		*bs = append(*bs, Balance{ID:ID,Balance:innerB})
+	}
+	if err == nil {
+		err = rows.Err()
+	}
+	if err == nil && len(*bs) == 0 {
+		err = NoBalances
+	}
+	return
 }
