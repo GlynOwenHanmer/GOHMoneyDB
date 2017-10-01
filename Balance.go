@@ -22,6 +22,14 @@ type Balance struct {
 	ID uint `json:"id"`
 }
 
+// Equal returns true if two Balance items are logically identical
+func (b Balance) Equal(ob Balance) bool {
+	if b.ID != ob.ID || !b.Balance.Equal(ob.Balance) {
+		return false
+	}
+	return true
+}
+
 // Balances holds multiple Balance items
 type Balances []Balance
 
@@ -46,12 +54,15 @@ func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
 	err := a.Account.ValidateBalance(b)
 	if err != nil {
-		return Balance{}, err
+		inserted, _ := newBalance(0, time.Time{}, 0)
+		return *inserted, err
 	}
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `INSERT INTO balances (%s) VALUES ($1, $2, $3) `, balanceInsertFields)
 	fmt.Fprintf(&query, `RETURNING %s;`, balanceSelectFields)
-	row := db.QueryRow(query.String(), a.ID, b.Date(), b.Amount())
+	amount := b.Amount()
+	floatAmount := float64((&amount).Amount()) / 100.
+	row := db.QueryRow(query.String(), a.ID, b.Date(), floatAmount)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
@@ -67,7 +78,9 @@ func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.Bala
 	if err := a.Account.ValidateBalance(update); err != nil {
 		return Balance{}, errors.New(`Update is not valid for account: ` + err.Error())
 	}
-	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, update.Amount(), update.Date(), original.ID)
+	amount := update.Amount()
+	floatAmount := float64((&amount).Amount()) / 100.
+	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, floatAmount, update.Date(), original.ID)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
@@ -85,27 +98,20 @@ func (a Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error) {
 }
 
 // scanRowForBalance scans a single sql.Row for a Balance object and returns any error occurring along the way.
-func scanRowForBalance(row *sql.Row) (b *Balance, err error) {
-	b = new(Balance)
+func scanRowForBalance(row *sql.Row) (*Balance, error) {
+	b := new(Balance)
 	var ID uint
 	var date time.Time
 	var amount float64
-	err = row.Scan(&ID, &date, &amount)
+	err := row.Scan(&ID, &date, &amount)
 	b, _ = newBalance(ID, date, amount)
 	if err == sql.ErrNoRows {
 		err = NoBalances
 	}
 	if err != nil {
-		return
+		return b, err
 	}
 	return b, b.Validate()
-}
-
-func newBalance(ID uint, d time.Time, a float64) (*Balance, error) {
-	innerB := new(balance.Balance)
-	var err error
-	*innerB, err = balance.New(d, balance.NewMoney(int64(a * 100)))
-	return &Balance{ID:ID, Balance:*innerB}, err
 }
 
 // scanRowsForBalance scans a sql.Rows for a Balances object and returns any error occurring along the way.
@@ -119,11 +125,11 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 		if err != nil {
 			return nil, err
 		}
-		innerB, err := balance.New(date, balance.NewMoney(int64(amount * 100)))
+		innerB, err := balance.New(date, balance.NewMoney(int64(amount*100)))
 		if err != nil {
 			return nil, err
 		}
-		*bs = append(*bs, Balance{ID:ID,Balance:innerB})
+		*bs = append(*bs, Balance{ID: ID, Balance: innerB})
 	}
 	if err == nil {
 		err = rows.Err()
@@ -132,4 +138,11 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 		err = NoBalances
 	}
 	return
+}
+
+func newBalance(ID uint, d time.Time, a float64) (*Balance, error) {
+	innerB := new(balance.Balance)
+	var err error
+	*innerB, err = balance.New(d, balance.NewMoney(int64(a*100)))
+	return &Balance{ID: ID, Balance: *innerB}, err
 }

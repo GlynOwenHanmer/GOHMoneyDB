@@ -1,10 +1,11 @@
 package GOHMoneyDB
 
 import (
-	"errors"
 	"database/sql/driver"
-	"github.com/rhymond/go-money"
+	"errors"
+
 	"github.com/GlynOwenHanmer/GOHMoney/balance"
+	"github.com/rhymond/go-money"
 )
 
 type dbMoney struct {
@@ -21,5 +22,5 @@ func (m *dbMoney) Scan(src interface{}) error {
 }
 
 func (m dbMoney) Value() (driver.Value, error) {
-	return float64(m.innerMoney.Amount())/100., nil
+	return float64(m.innerMoney.Amount()) / 100., nil
 }

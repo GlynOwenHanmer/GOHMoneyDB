@@ -75,6 +75,12 @@ func (a Account) ValidateBalance(db *sql.DB, balance Balance) error {
 		return err
 	}
 	balances, err := selectBalancesForAccount(db, a.ID)
+	if err == NoBalances {
+		err = InvalidAccountBalanceError{
+			AccountID: a.ID,
+			BalanceID: balance.ID,
+		}
+	}
 	if err != nil {
 		return err
 	}
@@ -204,7 +210,7 @@ func (a Account) Update(db *sql.DB, update account.Account) (Account, error) {
 		return Account{}, errors.New(`Update Account is not valid: ` + err.Error())
 	}
 	balances, err := a.Balances(db)
-	if err != nil {
+	if err != nil && err != NoBalances {
 		return Account{}, errors.New("Error selecting balances for validation: " + err.Error())
 	}
 	for _, b := range *balances {
