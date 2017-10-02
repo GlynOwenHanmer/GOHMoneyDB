@@ -4,8 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/GlynOwenHanmer/GOHMoney/balance"
-	"github.com/rhymond/go-money"
+	"github.com/GlynOwenHanmer/GOHMoney/money"
 )
 
 type dbMoney struct {
@@ -17,7 +16,7 @@ func (m *dbMoney) Scan(src interface{}) error {
 	if !ok {
 		return errors.New("source is not a float64 value and can't be scanned")
 	}
-	*m = dbMoney{balance.NewMoney(int64(f * 100))}
+	*m = dbMoney{money.New(int64(f * 100))}
 	return nil
 }
 

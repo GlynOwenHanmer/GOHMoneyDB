@@ -46,3 +46,13 @@ func Test_isAvailable(t *testing.T) {
 		t.Error("isAvailable returned false when it should have been true.")
 	}
 }
+
+func TestLoadDBConnectionString(t *testing.T) {
+	if _, err := GOHMoneyDB.LoadDBConnectionString(""); err == nil {
+		t.Errorf("Expected error but got none.")
+	}
+	if _, err := GOHMoneyDB.LoadDBConnectionString("asjdhgaksd"); err == nil {
+		t.Errorf("Expected error but got none.")
+	}
+
+}

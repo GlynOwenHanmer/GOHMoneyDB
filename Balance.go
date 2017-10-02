@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/GlynOwenHanmer/GOHMoney/balance"
+	"github.com/GlynOwenHanmer/GOHMoney/money"
 )
 
 const (
@@ -125,7 +126,7 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 		if err != nil {
 			return nil, err
 		}
-		innerB, err := balance.New(date, balance.NewMoney(int64(amount*100)))
+		innerB, err := balance.New(date, moneyIntFromFloat(amount))
 		if err != nil {
 			return nil, err
 		}
@@ -143,6 +144,10 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 func newBalance(ID uint, d time.Time, a float64) (*Balance, error) {
 	innerB := new(balance.Balance)
 	var err error
-	*innerB, err = balance.New(d, balance.NewMoney(int64(a*100)))
+	*innerB, err = balance.New(d, moneyIntFromFloat(a))
 	return &Balance{ID: ID, Balance: *innerB}, err
+}
+
+func moneyIntFromFloat(f float64) money.Money {
+	return money.New(int64(f * 100))
 }
