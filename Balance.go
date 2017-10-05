@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"encoding/json"
+
 	"github.com/GlynOwenHanmer/GOHMoney/balance"
 	"github.com/GlynOwenHanmer/GOHMoney/money"
 )
@@ -20,7 +22,7 @@ const (
 // Balance holds logic for an Account item that is held within a GOHMoney database.
 type Balance struct {
 	balance.Balance
-	ID uint `json:"id"`
+	ID uint
 }
 
 // Equal returns true if two Balance items are logically identical
@@ -61,7 +63,7 @@ func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `INSERT INTO balances (%s) VALUES ($1, $2, $3) `, balanceInsertFields)
 	fmt.Fprintf(&query, `RETURNING %s;`, balanceSelectFields)
-	amount := b.Amount()
+	amount := b.Money()
 	floatAmount := float64((&amount).Amount()) / 100.
 	row := db.QueryRow(query.String(), a.ID, b.Date(), floatAmount)
 	balance, err := scanRowForBalance(row)
@@ -79,7 +81,7 @@ func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.Bala
 	if err := a.Account.ValidateBalance(update); err != nil {
 		return Balance{}, errors.New(`Update is not valid for account: ` + err.Error())
 	}
-	amount := update.Amount()
+	amount := update.Money()
 	floatAmount := float64((&amount).Amount()) / 100.
 	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, floatAmount, update.Date(), original.ID)
 	balance, err := scanRowForBalance(row)
@@ -96,6 +98,32 @@ func (a Account) BalanceAtDate(db *sql.DB, time time.Time) (Balance, error) {
 	row := db.QueryRow(query.String(), a.ID, time)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
+}
+
+type jsonHelper struct {
+	ID    uint
+	Date  time.Time
+	Money money.Money
+}
+
+// MarshalJSON is a custom JSON marshalling method to avoid the custom JSON marshalling method of the Balance's inner Balance method being called instead.
+func (b Balance) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jsonHelper{
+		ID:    b.ID,
+		Date:  b.Date(),
+		Money: b.Money(),
+	})
+}
+
+// UnmarshalJSON is a custom JSON unmarshalling method to avoid the custom JSON unmarshalling method of the Balance's inner Balance method being called instead.
+func (b *Balance) UnmarshalJSON(data []byte) (err error) {
+	var aux jsonHelper
+	if err = json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	b.ID = aux.ID
+	b.Balance, err = balance.New(aux.Date, aux.Money)
+	return
 }
 
 // scanRowForBalance scans a single sql.Row for a Balance object and returns any error occurring along the way.
@@ -126,7 +154,8 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 		if err != nil {
 			return nil, err
 		}
-		innerB, err := balance.New(date, moneyIntFromFloat(amount))
+		var innerB balance.Balance
+		innerB, err = balance.New(date, moneyIntFromFloat(amount))
 		if err != nil {
 			return nil, err
 		}

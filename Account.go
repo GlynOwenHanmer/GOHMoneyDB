@@ -214,7 +214,7 @@ func (a Account) Update(db *sql.DB, update account.Account) (Account, error) {
 		return Account{}, errors.New("Error selecting balances for validation: " + err.Error())
 	}
 	for _, b := range *balances {
-		if err := update.ValidateBalance(b.Balance); err != nil {
+		if err = update.ValidateBalance(b.Balance); err != nil {
 			return Account{}, fmt.Errorf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.ID, err)
 		}
 	}

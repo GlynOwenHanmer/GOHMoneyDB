@@ -8,9 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"encoding/json"
+
 	"github.com/GlynOwenHanmer/GOHMoney/balance"
 	"github.com/GlynOwenHanmer/GOHMoney/money"
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
@@ -63,7 +66,7 @@ func TestBalancesForValidAccountId(t *testing.T) {
 		t.Errorf(`Unexpected Balance ID.\nExpected: %d\nActual:  %d`, expectedID, actualID)
 	}
 	expectedAmount := money.New(63641)
-	actualAmount := (*balances)[0].Amount()
+	actualAmount := (*balances)[0].Money()
 	if eq, err := actualAmount.Equal(expectedAmount); !eq || (err != nil) {
 		t.Errorf("account ID: %d, first balance, expected balance amount of %f but got %f", validID, expectedAmount, actualAmount)
 	}
@@ -102,9 +105,9 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 		t.Errorf("Inserted balance date should be zero but is: %s", insertedBalance.Date().String())
 	}
 	expected := money.New(0)
-	actual := insertedBalance.Amount()
+	actual := insertedBalance.Money()
 	if equal, _ := (&actual).Equal(expected); !equal {
-		t.Errorf("Inserted balance amount should be %f but is %f", expected, insertedBalance.Amount())
+		t.Errorf("Inserted balance amount should be %f but is %f", expected, insertedBalance.Money())
 	}
 	if insertedBalance.ID != 0 {
 		t.Errorf("Inserted balance ID should be %d but is %d", 0, insertedBalance.ID)
@@ -353,21 +356,21 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 	if err != expectedError {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
 	}
-	if updatedBalance.ID != updatedBalance.ID {
+	if createdBalance.ID != updatedBalance.ID {
 		t.Errorf("Balance ID changed when updating Balance\n\tOriginal: %d\n\tFinal   : %d", createdBalance.ID, updatedBalance.ID)
 	}
 	expectedDate := update.Date().Truncate(time.Hour * 24)
 	if !updatedBalance.Balance.Date().Equal(expectedDate) {
 		t.Errorf("Unexpected Balance date.\n\tExpected: %s\n\tActual  : %s", update.Date(), updatedBalance.Balance.Date())
 	}
-	appliedAmount := update.Amount()
-	updatedAmount := updatedBalance.Amount()
+	appliedAmount := update.Money()
+	updatedAmount := updatedBalance.Money()
 	equal, err := (&appliedAmount).Equal(updatedAmount)
 	if err != nil {
 		t.Errorf("Error comparing amounts. Err: %s", err)
 	}
 	if !equal {
-		t.Errorf("Unexpected Balance Amount.\n\tExpected: %s\n\tActual  : %s", update.Amount(), updatedBalance.Amount())
+		t.Errorf("Unexpected Balance Amount.\n\tExpected: %s\n\tActual  : %s", update.Money(), updatedBalance.Money())
 	}
 }
 
@@ -464,5 +467,33 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 			message += fmt.Sprintf("\nFor time: %v", testSet.Time)
 			t.Error(message)
 		}
+	}
+}
+
+func TestBalance_JSONLoop(t *testing.T) {
+	a := GOHMoneyDB.Balance{ID: 3, Balance: newInnerBalanceIgnoreError(time.Now(), 7654)}
+	jsonBytes, err := json.Marshal(a)
+	if err != nil {
+		t.Fatalf("Error marshalling json for testing: %s", err)
+	}
+
+	var b = struct {
+		ID    uint
+		Date  time.Time
+		Money money.Money
+	}{}
+	err = json.Unmarshal(jsonBytes, &b)
+	fatalIfError(t, err, "Unmarshaling json for testing")
+	assert.Equal(t, a.ID, b.ID, "JSON: %s", string(jsonBytes))
+	assert.Equal(t, a.Date(), b.Date)
+	assert.Equal(t, a.Money(), b.Money)
+
+	var c GOHMoneyDB.Balance
+	if err := json.Unmarshal(jsonBytes, &c); err != nil {
+		t.Fatalf("Error unmarshaling bytes into Balance: %s\njson: %s", err, jsonBytes)
+	}
+	assert.Equal(t, a, c)
+	if !a.Equal(c) {
+		t.Fatalf("Expected %v, but got %v\njson: %s", a, c, jsonBytes)
 	}
 }

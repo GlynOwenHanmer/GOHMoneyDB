@@ -219,15 +219,24 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 	var balances [3]GOHMoneyDB.Balance
 	for i := 0; i < 3; i++ {
 		balances[i], err = account.InsertBalance(db, newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, i), int64(i)))
+		fatalIfError(t, err, "Error inserting Balance for testing")
 	}
 	for _, balance := range balances {
 		selectedBalance, err := account.SelectBalanceWithID(db, balance.ID)
-		if err != nil {
-			t.Errorf("Expected nil error but recieved error: %s", err)
-		}
-		if !selectedBalance.Equal(balance) {
-			t.Errorf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance)
-		}
+		errorIfError(t, err, "Expected nil error but recieved error")
+		errorIfError(t, err, fmt.Sprintf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance))
+	}
+}
+
+func fatalIfError(t *testing.T, err error, message string) {
+	if err != nil {
+		t.Fatalf("%s: %s", message, err)
+	}
+}
+
+func errorIfError(t *testing.T, err error, message string) {
+	if err != nil {
+		t.Errorf("%s: %s", message, err)
 	}
 }
 
