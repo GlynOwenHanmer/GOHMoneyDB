@@ -16,7 +16,7 @@ func (m *dbMoney) Scan(src interface{}) error {
 	if !ok {
 		return errors.New("source is not a float64 value and can't be scanned")
 	}
-	*m = dbMoney{money.New(int64(f * 100))}
+	*m = dbMoney{money.GBP(int64(f * 100))}
 	return nil
 }
 

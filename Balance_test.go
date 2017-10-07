@@ -65,7 +65,7 @@ func TestBalancesForValidAccountId(t *testing.T) {
 	if expectedID != actualID {
 		t.Errorf(`Unexpected Balance ID.\nExpected: %d\nActual:  %d`, expectedID, actualID)
 	}
-	expectedAmount := money.New(63641)
+	expectedAmount := money.GBP(63641)
 	actualAmount := (*balances)[0].Money()
 	if eq, err := actualAmount.Equal(expectedAmount); !eq || (err != nil) {
 		t.Errorf("account ID: %d, first balance, expected balance amount of %f but got %f", validID, expectedAmount, actualAmount)
@@ -104,7 +104,7 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	if !insertedBalance.Date().IsZero() {
 		t.Errorf("Inserted balance date should be zero but is: %s", insertedBalance.Date().String())
 	}
-	expected := money.New(0)
+	expected := money.GBP(0)
 	actual := insertedBalance.Money()
 	if equal, _ := (&actual).Equal(expected); !equal {
 		t.Errorf("Inserted balance amount should be %f but is %f", expected, insertedBalance.Money())
@@ -140,7 +140,7 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 	}
 	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC).Truncate(time.Hour * 24)
 
-	validBalance, _ := balance.New(validDate, money.New(123456))
+	validBalance, _ := balance.New(validDate, money.GBP(123456))
 	startingBalances, err = dbAccount.Balances(db)
 	if err != nil {
 		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
@@ -208,7 +208,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	b, _ := balance.New(account.Start().AddDate(0, 0, 1), money.New(0))
+	b, _ := balance.New(account.Start().AddDate(0, 0, 1), money.GBP(0))
 	validBalance, err := account.InsertBalance(db, b)
 	if err != nil {
 		t.Fatalf(`Error inserting new balance for testing. Error :%s`, err)
@@ -251,7 +251,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 }
 
 func newInnerBalanceIgnoreError(t time.Time, a int64) balance.Balance {
-	b, _ := balance.New(t, money.New(a))
+	b, _ := balance.New(t, money.GBP(a))
 	return b
 }
 

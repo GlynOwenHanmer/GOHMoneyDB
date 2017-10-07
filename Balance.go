@@ -132,7 +132,8 @@ func scanRowForBalance(row *sql.Row) (*Balance, error) {
 	var ID uint
 	var date time.Time
 	var amount float64
-	err := row.Scan(&ID, &date, &amount)
+	var currency string
+	err := row.Scan(&ID, &date, &amount, &currency)
 	b, _ = newBalance(ID, date, amount)
 	if err == sql.ErrNoRows {
 		err = NoBalances
@@ -170,13 +171,13 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 	return
 }
 
-func newBalance(ID uint, d time.Time, a float64) (*Balance, error) {
+func newBalance(ID uint, d time.Time, a float64, cur string) (*Balance, error) {
 	innerB := new(balance.Balance)
 	var err error
 	*innerB, err = balance.New(d, moneyIntFromFloat(a))
 	return &Balance{ID: ID, Balance: *innerB}, err
 }
 
-func moneyIntFromFloat(f float64) money.Money {
-	return money.New(int64(f * 100))
+func moneyIntFromFloat(f float64, cur string) money.Money {
+	return money.GBP(int64(f * 100))
 }
