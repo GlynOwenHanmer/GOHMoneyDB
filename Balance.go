@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	balanceInsertFields  string = "account_id, date, balance"
-	balanceSelectFields  string = "id, date, balance"
-	bBalanceSelectFields string = "b.id, b.date, b.balance"
+	balanceInsertFields  string = "account_id, date, balance, currency"
+	balanceSelectFields  string = "id, date, balance, currency"
+	bBalanceSelectFields string = "b.id, b.date, b.balance, currency"
 )
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.
@@ -57,15 +57,19 @@ func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
 	err := a.Account.ValidateBalance(b)
 	if err != nil {
-		inserted, _ := newBalance(0, time.Time{}, 0)
-		return *inserted, err
+		dbb, _ := newBalance(0, time.Time{}, 0, "")
+		return *dbb, err
 	}
 	var query bytes.Buffer
-	fmt.Fprintf(&query, `INSERT INTO balances (%s) VALUES ($1, $2, $3) `, balanceInsertFields)
+	fmt.Fprintf(&query, `INSERT INTO balances (%s) VALUES ($1, $2, $3, $4) `, balanceInsertFields)
 	fmt.Fprintf(&query, `RETURNING %s;`, balanceSelectFields)
 	amount := b.Money()
 	floatAmount := float64((&amount).Amount()) / 100.
-	row := db.QueryRow(query.String(), a.ID, b.Date(), floatAmount)
+	code := "non"
+	if cur, err := b.Money().Currency(); err == nil {
+		code = cur.Code
+	}
+	row := db.QueryRow(query.String(), a.ID, b.Date(), floatAmount, code)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
@@ -134,7 +138,7 @@ func scanRowForBalance(row *sql.Row) (*Balance, error) {
 	var amount float64
 	var currency string
 	err := row.Scan(&ID, &date, &amount, &currency)
-	b, _ = newBalance(ID, date, amount)
+	b, _ = newBalance(ID, date, amount, "GBP")
 	if err == sql.ErrNoRows {
 		err = NoBalances
 	}
@@ -151,12 +155,17 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 		var ID uint
 		var date time.Time
 		var amount float64
-		err = rows.Scan(&ID, &date, &amount)
+		var cur string
+		err = rows.Scan(&ID, &date, &amount, &cur)
 		if err != nil {
 			return nil, err
 		}
 		var innerB balance.Balance
-		innerB, err = balance.New(date, moneyIntFromFloat(amount))
+		m, err := moneyIntFromFloat(amount, cur)
+		if err != nil {
+			return nil, err
+		}
+		innerB, err = balance.New(date, *m)
 		if err != nil {
 			return nil, err
 		}
@@ -172,12 +181,12 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 }
 
 func newBalance(ID uint, d time.Time, a float64, cur string) (*Balance, error) {
+	mon, err := moneyIntFromFloat(a, cur)
 	innerB := new(balance.Balance)
-	var err error
-	*innerB, err = balance.New(d, moneyIntFromFloat(a))
+	*innerB, err = balance.New(d, *mon)
 	return &Balance{ID: ID, Balance: *innerB}, err
 }
 
-func moneyIntFromFloat(f float64, cur string) money.Money {
-	return money.GBP(int64(f * 100))
+func moneyIntFromFloat(f float64, cur string) (*money.Money, error) {
+	return money.New(int64(f * 100), cur)
 }

@@ -194,7 +194,7 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 		t.Logf("Selected balance: %v", b)
 	}
 
-	innerBalance := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 10), 10)
+	innerBalance := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 10), 10, "GBP")
 	validBalance, err := account.InsertBalance(db, innerBalance)
 	if err != nil {
 		t.Fatalf("Error occurred whilst inserting Balance for testing. Error: %s", err)
@@ -218,7 +218,7 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	var balances [3]GOHMoneyDB.Balance
 	for i := 0; i < 3; i++ {
-		balances[i], err = account.InsertBalance(db, newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, i), int64(i)))
+		balances[i], err = account.InsertBalance(db, newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, i), int64(i), "GBP"))
 		fatalIfError(t, err, "Error inserting Balance for testing")
 	}
 	for _, balance := range balances {

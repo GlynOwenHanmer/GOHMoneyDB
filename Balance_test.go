@@ -215,7 +215,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	}
 	outOfDateRange := GOHMoneyDB.Balance{
 		ID:      account.ID,
-		Balance: newInnerBalanceIgnoreError(time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC), 0),
+		Balance: newInnerBalanceIgnoreError(time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC), 0, "GBP"),
 	}
 	balanceWithWrongOwner := GOHMoneyDB.Balance{
 		ID:      account.ID - 1,
@@ -250,8 +250,9 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	}
 }
 
-func newInnerBalanceIgnoreError(t time.Time, a int64) balance.Balance {
-	b, _ := balance.New(t, money.GBP(a))
+func newInnerBalanceIgnoreError(t time.Time, a int64, cur string) balance.Balance {
+	m, _ := money.New(a, cur)
+	b, _ := balance.New(t, *m)
 	return b
 }
 
@@ -268,12 +269,12 @@ func Test_UpdateBalance_WrongAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(account0.Start(), 0)
+	newBalance := newInnerBalanceIgnoreError(account0.Start(), 0, "GBP")
 	createdBalance0, err := account0.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
-	update := newInnerBalanceIgnoreError(time.Now(), 100)
+	update := newInnerBalanceIgnoreError(time.Now(), 100, "GBP")
 	updatedBalance, err := account1.UpdateBalance(db, createdBalance0, update)
 	expectedError := GOHMoneyDB.InvalidAccountBalanceError{AccountID: account1.ID, BalanceID: createdBalance0.ID}
 	if err != expectedError {
@@ -294,7 +295,7 @@ func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(account.Start(), 0)
+	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "GBP")
 	createdBalance, err := account.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
@@ -321,12 +322,12 @@ func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(account.Start(), 0)
+	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "GBP")
 	createdBalance, err := account.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
-	update := newInnerBalanceIgnoreError(account.Start().AddDate(-1, 0, 0), 0)
+	update := newInnerBalanceIgnoreError(account.Start().AddDate(-1, 0, 0), 0, "GBP")
 	_, err = account.UpdateBalance(db, createdBalance, update)
 	expectedError := `Update is not valid for account: ` + balance.DateOutOfAccountTimeRange{}.Error()
 	if err == nil {
@@ -345,12 +346,12 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(account.Start(), 0)
+	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "GBP")
 	createdBalance, err := account.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
-	update := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 1), 100)
+	update := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 1), 100, "GBP")
 	updatedBalance, err := account.UpdateBalance(db, createdBalance, update)
 	expectedError := error(nil)
 	if err != expectedError {
@@ -391,18 +392,18 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 	if err != expectedError {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", expectedError, err)
 	}
-	expectedBalance := GOHMoneyDB.Balance{ID: 0, Balance: newInnerBalanceIgnoreError(time.Time{}, 0)}
+	expectedBalance := GOHMoneyDB.Balance{ID: 0, Balance: newInnerBalanceIgnoreError(time.Time{}, 0, "GBP")}
 
 	if !expectedBalance.Equal(b) {
 		t.Errorf("Unexpected b.\nExpected: %s\nActual  : %s", expectedBalance, b)
 	}
 
 	balances := [5]balance.Balance{
-		newInnerBalanceIgnoreError(time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC), 0),
-		newInnerBalanceIgnoreError(time.Date(2000, 1, 3, 1, 1, 1, 1, time.UTC), 1),
-		newInnerBalanceIgnoreError(time.Date(2000, 1, 5, 1, 1, 1, 1, time.UTC), 2),
-		newInnerBalanceIgnoreError(time.Date(2000, 1, 5, 1, 1, 1, 1, time.UTC), 3),
-		newInnerBalanceIgnoreError(time.Date(2000, 1, 7, 1, 1, 1, 1, time.UTC), 4),
+		newInnerBalanceIgnoreError(time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC), 0, "GBP"),
+		newInnerBalanceIgnoreError(time.Date(2000, 1, 3, 1, 1, 1, 1, time.UTC), 1, "GBP"),
+		newInnerBalanceIgnoreError(time.Date(2000, 1, 5, 1, 1, 1, 1, time.UTC), 2, "GBP"),
+		newInnerBalanceIgnoreError(time.Date(2000, 1, 5, 1, 1, 1, 1, time.UTC), 3, "GBP"),
+		newInnerBalanceIgnoreError(time.Date(2000, 1, 7, 1, 1, 1, 1, time.UTC), 4, "GBP"),
 	}
 
 	var insertedBalances []GOHMoneyDB.Balance
@@ -427,7 +428,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 			// No balances exist before date
 			balances[0].Date().AddDate(-1, 0, 0),
 			GOHMoneyDB.NoBalances,
-			GOHMoneyDB.Balance{ID: 0, Balance: newInnerBalanceIgnoreError(time.Time{}, 0)},
+			GOHMoneyDB.Balance{ID: 0, Balance: newInnerBalanceIgnoreError(time.Time{}, 0, "GBP")},
 		},
 		{
 			// Balance exists before date
@@ -471,7 +472,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 }
 
 func TestBalance_JSONLoop(t *testing.T) {
-	a := GOHMoneyDB.Balance{ID: 3, Balance: newInnerBalanceIgnoreError(time.Now(), 7654)}
+	a := GOHMoneyDB.Balance{ID: 3, Balance: newInnerBalanceIgnoreError(time.Now(), 7654, "GBP")}
 	jsonBytes, err := json.Marshal(a)
 	if err != nil {
 		t.Fatalf("Error marshalling json for testing: %s", err)
