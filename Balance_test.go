@@ -19,7 +19,7 @@ import (
 func Test_BalancesForInvalidAccountId(t *testing.T) {
 	validID := uint(1)
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	a, err := GOHMoneyDB.SelectAccountWithID(db, validID)
 	if err != nil {
 		t.Errorf("Error selecting account for testings: %s", err)
@@ -40,7 +40,7 @@ func Test_BalancesForInvalidAccountId(t *testing.T) {
 func TestBalancesForValidAccountId(t *testing.T) {
 	validID := uint(1)
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	a, err := GOHMoneyDB.SelectAccountWithID(db, validID)
 	if err != nil {
 		t.Errorf("Error selecting account for testings: %s", err)
@@ -74,7 +74,7 @@ func TestBalancesForValidAccountId(t *testing.T) {
 func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	accountID := uint(1)
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account, err := GOHMoneyDB.SelectAccountWithID(db, accountID)
 	if err != nil {
 		t.Errorf("Error selecting account with ID %d for testing: %s", accountID, err.Error())
@@ -115,7 +115,7 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 	accountID := uint(1)
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	initialLastID := getHighestBalanceID(db, t)
 	account, err := GOHMoneyDB.SelectAccountWithID(db, accountID)
 	if err != nil {
@@ -184,7 +184,7 @@ func getHighestBalanceID(db *sql.DB, t *testing.T) uint {
 
 func TestAccount_ValidateBalance(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
@@ -239,7 +239,7 @@ func newInnerBalanceIgnoreError(t time.Time, a int64, cur string) balance.Balanc
 
 func Test_UpdateBalance_WrongAccount(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	accountA, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
@@ -267,7 +267,7 @@ func Test_UpdateBalance_WrongAccount(t *testing.T) {
 
 func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
@@ -292,7 +292,7 @@ func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 // Test for when the update Balance that is trying to be applied is not valid in the context of the account. For example, where the Data of the update is outside of the TimeRange of the account.
 func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
@@ -314,7 +314,7 @@ func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
 
 func Test_UpdateBalance_ValidBalance(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
@@ -350,7 +350,7 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 
 func Test_AccountBalanceAtDate(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	dbAccount, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf("Unable to create account for testing. Error: %s", err.Error())

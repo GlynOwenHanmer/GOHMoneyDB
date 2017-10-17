@@ -48,7 +48,7 @@ func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 	if err != nil {
 		return &Balances{}, err
 	}
-	defer rows.Close()
+	defer close(rows)
 	return scanRowsForBalances(rows)
 }
 

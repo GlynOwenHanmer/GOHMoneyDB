@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
-	"log"
 	"io"
 )
 
@@ -54,5 +53,11 @@ func TestLoadDBConnectionString(t *testing.T) {
 	if _, err := GOHMoneyDB.LoadDBConnectionString("asjdhgaksd"); err == nil {
 		t.Errorf("Expected error but got none.")
 	}
+}
 
+func close(t *testing.T, c io.Closer) {
+	err := c.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
 }

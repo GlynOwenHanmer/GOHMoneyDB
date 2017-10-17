@@ -45,7 +45,7 @@ func Test_CreateAccount(t *testing.T) {
 		},
 	}
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	for _, testSet := range testSets {
 		newAccount, err := account.New(testSet.name, testSet.start, testSet.end)
 		fatalIfError(t, err, "Error creating new account for testing")
@@ -76,7 +76,7 @@ func Test_CreateAccount(t *testing.T) {
 
 func Test_SelectAccounts(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	accounts, err := GOHMoneyDB.SelectAccounts(db)
 	if err != nil {
 		if _, ok := err.(account.FieldError); !ok {
@@ -94,7 +94,7 @@ func Test_SelectAccounts(t *testing.T) {
 
 func Test_SelectAccountsOpen(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	openAccounts, err := GOHMoneyDB.SelectAccountsOpen(db)
 	fatalIfError(t, err, "Error running SelectAccountsOpen method")
 	if len(*openAccounts) == 0 {
@@ -135,7 +135,7 @@ func Test_SelectAccountWithId(t *testing.T) {
 		},
 	}
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	for _, test := range tests {
 		account, err := GOHMoneyDB.SelectAccountWithID(db, test.id)
 		if test.expectedError != err {
@@ -155,7 +155,7 @@ func Test_SelectAccountWithId(t *testing.T) {
 
 func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	fatalIfError(t, err, "Error inserting account for testing")
 	// Account with no Balances
@@ -182,7 +182,7 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 
 func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account := newTestDBAccount(t, db)
 	var balances [3]GOHMoneyDB.Balance
 	for i := 0; i < 3; i++ {
@@ -221,7 +221,7 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	update, err := account.New("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
 	fatalIfError(t, err, "Error creating a for testing")
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	a, err := GOHMoneyDB.CreateAccount(db, original)
 	fatalIfError(t, err, "Error creating Account")
 	updated, err := a.Update(db, update)
@@ -246,7 +246,7 @@ func TestAccount_Delete(t *testing.T) {
 		t.Errorf("Expected error but none was returned when attempting to delete an invalid account.")
 	}
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	account := newTestDBAccount(t, db)
 	vErr := account.Validate(db)
 	fatalIfError(t, vErr, "Invalid account returned for testing")
@@ -271,7 +271,7 @@ func TestAccount_JsonLoop(t *testing.T) {
 	)
 	fatalIfError(t, err, "Error creating new account for testing")
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	originalAccount, err := GOHMoneyDB.CreateAccount(db, innerAccount)
 	fatalIfError(t, err, "Error creating DB account for testing")
 	originalBytes, err := json.Marshal(originalAccount)
@@ -310,7 +310,7 @@ func TestAccounts_JSONLoop(t *testing.T) {
 		innerAccounts = append(innerAccounts, innerAccount)
 	}
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	var originalAccounts GOHMoneyDB.Accounts
 	for i := 0; i < len(innerAccounts); i++ {
 		originalAccount, err := GOHMoneyDB.CreateAccount(db, innerAccounts[i])
@@ -339,7 +339,7 @@ func TestAccounts_JSONLoop(t *testing.T) {
 
 func TestAccount_Validate(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 	invalid := GOHMoneyDB.Account{}
 	err := invalid.Validate(db)
 	if err == nil {
@@ -362,7 +362,7 @@ func TestAccount_Validate(t *testing.T) {
 
 func TestAccount_Equal(t *testing.T) {
 	db := prepareTestDB(t)
-	defer db.Close()
+	defer close(t, db)
 
 	a := newTestDBAccount(t, db)
 	b := a

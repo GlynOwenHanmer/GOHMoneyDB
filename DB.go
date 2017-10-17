@@ -47,3 +47,12 @@ func LoadDBConnectionString(location string) (string, error) {
 	}
 	return string(connectionString[0:bytesCount]), err
 }
+
+func close(c io.Closer) {
+	if c == nil {
+		log.Printf("Attempted to close db but it was nil.")
+	}
+	if err := c.Close(); err != nil {
+		log.Printf("Error closing db: %s", err)
+	}
+}

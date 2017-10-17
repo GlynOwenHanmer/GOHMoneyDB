@@ -102,7 +102,7 @@ func SelectAccounts(db *sql.DB) (*Accounts, error) {
 	if err != nil {
 		return &Accounts{}, err
 	}
-	defer rows.Close()
+	defer close(rows)
 	return scanRowsForAccounts(rows)
 }
 
@@ -113,7 +113,7 @@ func SelectAccountsOpen(db *sql.DB) (*Accounts, error) {
 	if err != nil {
 		return &Accounts{}, err
 	}
-	defer rows.Close()
+	defer close(rows)
 	return scanRowsForAccounts(rows)
 }
 
