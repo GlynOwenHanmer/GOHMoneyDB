@@ -102,7 +102,7 @@ func SelectAccounts(db *sql.DB) (*Accounts, error) {
 	if err != nil {
 		return &Accounts{}, err
 	}
-	defer rows.Close()
+	defer close(rows)
 	return scanRowsForAccounts(rows)
 }
 
@@ -113,7 +113,7 @@ func SelectAccountsOpen(db *sql.DB) (*Accounts, error) {
 	if err != nil {
 		return &Accounts{}, err
 	}
-	defer rows.Close()
+	defer close(rows)
 	return scanRowsForAccounts(rows)
 }
 
@@ -260,4 +260,18 @@ func (a Account) Validate(db *sql.DB) error {
 		return nil
 	}
 	return err
+}
+
+// Equal return true if two Accounts are identical.
+func (a Account) Equal(b Account) (bool, error) {
+	if a.ID != b.ID {
+		return false, nil
+	}
+	if !a.Account.Equal(b.Account) {
+		return false, nil
+	}
+	if !a.deletedAt.Equal(b.deletedAt) {
+		return false, errors.New("accounts are equal but one has been deleted")
+	}
+	return true, nil
 }

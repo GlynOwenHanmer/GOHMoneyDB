@@ -48,7 +48,7 @@ func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 	if err != nil {
 		return &Balances{}, err
 	}
-	defer rows.Close()
+	defer close(rows)
 	return scanRowsForBalances(rows)
 }
 
@@ -189,5 +189,5 @@ func newBalance(ID uint, d time.Time, a float64, cur string) (*Balance, error) {
 }
 
 func moneyIntFromFloat(f float64, cur string) (*money.Money, error) {
-	return money.New(int64(f * 100), cur)
+	return money.New(int64(f*100), cur)
 }
