@@ -261,3 +261,13 @@ func (a Account) Validate(db *sql.DB) error {
 	}
 	return err
 }
+
+func (a Account) Equal(b Account) bool {
+	if a.ID != b.ID {
+		return false
+	}
+	if !a.Account.Equal(b.Account) {
+		return false
+	}
+	return true
+}

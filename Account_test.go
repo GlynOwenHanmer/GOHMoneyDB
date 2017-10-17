@@ -67,9 +67,10 @@ func Test_CreateAccount(t *testing.T) {
 			},
 		)
 		fatalIfError(t, err, "Error creating account for testing")
-		if !actualCreatedAccount.Equal(expectedAccount) {
+		if !actualCreatedAccount.Account.Equal(expectedAccount) {
 			t.Errorf("Unexpected account:\nExpected: %+v\nActual  : %+v", expectedAccount, actualCreatedAccount)
 		}
+		//todo Check that id has incremented by one?
 	}
 }
 
@@ -262,9 +263,7 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	a, err := GOHMoneyDB.CreateAccount(db, original)
 	fatalIfError(t, err, "Error creating Account")
 	updated, err := a.Update(db, update)
-	if err != nil {
-		t.Errorf("Error updating a: %s", err)
-	}
+	errorIfError(t, err, "Error updating account")
 	expected, err := account.New(
 		update.Name,
 		update.Start().Truncate(24*time.Hour),
@@ -367,17 +366,11 @@ func TestAccounts_JSONLoop(t *testing.T) {
 	for i := 0; i < len(innerAccounts); i++ {
 		final := finalAccounts[i]
 		original := originalAccounts[i]
-		if final.ID != original.ID {
-			t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", original.ID, final.ID)
+		if !final.Equal(original) {
+			t.Errorf("Unexpected account.\n\tExpected: %+v\n\tActuall  : %+v", original, final)
 			logBytes(t)
-		}
-		if !original.Start().Equal(final.Start()) {
-			t.Errorf("Unexpected account Start.\n\tExpected: %s\n\tActual  : %s", original.Start(), final.Start())
-			logBytes(t)
-		}
-		if original.End().Valid != final.End().Valid || !original.End().Time.Equal(final.End().Time) {
-			t.Errorf("Unexpected account End. \n\tExpected: %s\n\tActual  : %s", original.End(), final.End())
-			logBytes(t)
+			// FailNow here as logging the bytes for each loop iteration can cause an extremely long output.
+			t.FailNow()
 		}
 	}
 }
@@ -402,7 +395,10 @@ func TestAccount_Validate(t *testing.T) {
 
 	valid, err := GOHMoneyDB.SelectAccountWithID(db, 1)
 	fatalIfError(t, err, "Error selecting valid account for testing")
-	if validErr := valid.Validate(db); validErr != nil {
-		t.Errorf("Expected nil error but got %s", validErr)
-	}
+	validErr := valid.Validate(db)
+	errorIfError(t, validErr, "Expected nil error but got")
+}
+
+func TestAccount_Equal(t *testing.T) {
+	t.Fail()
 }
