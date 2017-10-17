@@ -25,7 +25,7 @@ func prepareTestDB() (*sql.DB, error) {
 	if len(usr.HomeDir) < 1 {
 		return nil, errors.New("No home directory for current user.")
 	}
-	connectionString, err := GOHMoneyDB.LoadDBConnectionString(usr.HomeDir + `/.gohmoneydbtestconnectionstring`)
+	connectionString, err := GOHMoneyDB.LoadDBConnectionString(usr.HomeDir + `/.gohmoney/.gohmoneydbtestconnectionstring`)
 	if err != nil {
 		return nil, err
 	}

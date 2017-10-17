@@ -139,12 +139,7 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 		t.Fatalf("Unable to get balances for testing for account: %s\nError: %s", dbAccount, err)
 	}
 	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC).Truncate(time.Hour * 24)
-
 	validBalance, _ := balance.New(validDate, money.GBP(123456))
-	startingBalances, err = dbAccount.Balances(db)
-	if err != nil {
-		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
-	}
 	insertedBalance, err := dbAccount.InsertBalance(db, validBalance)
 	if err != nil {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", nil, err)

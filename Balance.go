@@ -3,11 +3,10 @@ package GOHMoneyDB
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
-
-	"encoding/json"
 
 	"github.com/GlynOwenHanmer/GOHMoney/balance"
 	"github.com/GlynOwenHanmer/GOHMoney/money"
@@ -55,8 +54,7 @@ func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 
 // InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
 func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
-	err := a.Account.ValidateBalance(b)
-	if err != nil {
+	if err := a.Account.ValidateBalance(b); err != nil {
 		dbb, _ := newBalance(0, time.Time{}, 0, "")
 		return *dbb, err
 	}
@@ -132,13 +130,12 @@ func (b *Balance) UnmarshalJSON(data []byte) (err error) {
 
 // scanRowForBalance scans a single sql.Row for a Balance object and returns any error occurring along the way.
 func scanRowForBalance(row *sql.Row) (*Balance, error) {
-	b := new(Balance)
 	var ID uint
 	var date time.Time
 	var amount float64
 	var currency string
 	err := row.Scan(&ID, &date, &amount, &currency)
-	b, _ = newBalance(ID, date, amount, "GBP")
+	b, _ := newBalance(ID, date, amount, "GBP")
 	if err == sql.ErrNoRows {
 		err = NoBalances
 	}
@@ -161,7 +158,8 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 			return nil, err
 		}
 		var innerB balance.Balance
-		m, err := moneyIntFromFloat(amount, cur)
+		var m *money.Money
+		m, err = moneyIntFromFloat(amount, cur)
 		if err != nil {
 			return nil, err
 		}
@@ -182,6 +180,9 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 
 func newBalance(ID uint, d time.Time, a float64, cur string) (*Balance, error) {
 	mon, err := moneyIntFromFloat(a, cur)
+	if err != nil {
+		return nil, err
+	}
 	innerB := new(balance.Balance)
 	*innerB, err = balance.New(d, *mon)
 	return &Balance{ID: ID, Balance: *innerB}, err
