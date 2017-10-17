@@ -2,34 +2,35 @@ package GOHMoneyDB_test
 
 import (
 	"database/sql"
-	"errors"
 	"os/user"
 	"testing"
 
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
+	"log"
+	"io"
 )
 
 func Test_prepareTestDB(t *testing.T) {
-	_, err := prepareTestDB()
-	if err != nil {
-		t.Fatalf(`Unable to prepare DB for testing.`)
+	db := prepareTestDB(t)
+	if db == nil {
+		t.Fatalf(`Unable to prepare DB for testing`)
 	}
+	err := db.Close()
+	fatalIfError(t, err, "Error closing test DB")
 }
 
 // prepareTestDB prepares a DB connection to the test DB and return it, if possible, with any errors that occured whilst preparing the connection.
-func prepareTestDB() (*sql.DB, error) {
+func prepareTestDB(t *testing.T) *sql.DB {
 	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
+	fatalIfError(t, err, "Error getting current user")
 	if len(usr.HomeDir) < 1 {
-		return nil, errors.New("No home directory for current user.")
+		t.Fatalf("User's home directory is zero length")
 	}
 	connectionString, err := GOHMoneyDB.LoadDBConnectionString(usr.HomeDir + `/.gohmoney/.gohmoneydbtestconnectionstring`)
-	if err != nil {
-		return nil, err
-	}
-	return GOHMoneyDB.OpenDBConnection(connectionString)
+	fatalIfError(t, err, "Error loading DB connection string")
+	db, err := GOHMoneyDB.OpenDBConnection(connectionString)
+	fatalIfError(t, err, "Error opening ")
+	return db
 }
 
 func Test_isAvailable(t *testing.T) {
@@ -38,13 +39,12 @@ func Test_isAvailable(t *testing.T) {
 		t.Error("isAvailable returned true when it should have been false.")
 	}
 
-	availableDb, err := prepareTestDB()
-	if err != nil {
-		t.Fatalf("Error occured whilst prepping DB for test. Error: %s", err.Error())
-	}
+	availableDb := prepareTestDB(t)
 	if !GOHMoneyDB.DbIsAvailable(availableDb) {
 		t.Error("isAvailable returned false when it should have been true.")
 	}
+	err := availableDb.Close()
+	fatalIfError(t, err, "Error closing DB")
 }
 
 func TestLoadDBConnectionString(t *testing.T) {

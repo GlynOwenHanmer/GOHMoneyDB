@@ -11,6 +11,7 @@ import (
 	"github.com/GlynOwenHanmer/GOHMoney/account"
 	"github.com/GlynOwenHanmer/GOHMoneyDB"
 	gohtime "github.com/GlynOwenHanmer/go-time"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_CreateAccount(t *testing.T) {
@@ -22,8 +23,8 @@ func Test_CreateAccount(t *testing.T) {
 		error
 	}{
 		{
-			name:          "TEST_ACCOUNT",
-			start:         now,
+			name:  "TEST_ACCOUNT",
+			start: now,
 			end: gohtime.NullTime{
 				Valid: true,
 				Time:  now.AddDate(1, 0, 0),
@@ -31,20 +32,19 @@ func Test_CreateAccount(t *testing.T) {
 			error: nil,
 		},
 		{
-			name:          "TEST_ACCOUNT",
-			start:         now,
-			end:           gohtime.NullTime{Valid: false},
-			error:         nil,
+			name:  "TEST_ACCOUNT",
+			start: now,
+			end:   gohtime.NullTime{Valid: false},
+			error: nil,
 		},
 		{
-			name:          "Account With'Apostrophe",
-			start:         now,
-			end:           gohtime.NullTime{Valid: false},
-			error:         nil,
+			name:  "Account With'Apostrophe",
+			start: now,
+			end:   gohtime.NullTime{Valid: false},
+			error: nil,
 		},
 	}
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	for _, testSet := range testSets {
 		newAccount, err := account.New(testSet.name, testSet.start, testSet.end)
@@ -60,10 +60,10 @@ func Test_CreateAccount(t *testing.T) {
 		}
 		expectedAccount, err := account.New(
 			testSet.name,
-			testSet.start.Truncate(24 * time.Hour),
+			testSet.start.Truncate(24*time.Hour),
 			gohtime.NullTime{
-				Valid:testSet.end.Valid,
-				Time:testSet.end.Time.Truncate(24 * time.Hour),
+				Valid: testSet.end.Valid,
+				Time:  testSet.end.Time.Truncate(24 * time.Hour),
 			},
 		)
 		fatalIfError(t, err, "Error creating account for testing")
@@ -75,8 +75,7 @@ func Test_CreateAccount(t *testing.T) {
 }
 
 func Test_SelectAccounts(t *testing.T) {
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	accounts, err := GOHMoneyDB.SelectAccounts(db)
 	if err != nil {
@@ -94,8 +93,7 @@ func Test_SelectAccounts(t *testing.T) {
 }
 
 func Test_SelectAccountsOpen(t *testing.T) {
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	openAccounts, err := GOHMoneyDB.SelectAccountsOpen(db)
 	fatalIfError(t, err, "Error running SelectAccountsOpen method")
@@ -136,8 +134,7 @@ func Test_SelectAccountWithId(t *testing.T) {
 			name:          "Amsterdam",
 		},
 	}
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	for _, test := range tests {
 		account, err := GOHMoneyDB.SelectAccountWithID(db, test.id)
@@ -157,8 +154,7 @@ func Test_SelectAccountWithId(t *testing.T) {
 }
 
 func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
 	fatalIfError(t, err, "Error inserting account for testing")
@@ -185,12 +181,12 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 }
 
 func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	account := newTestDBAccount(t, db)
 	var balances [3]GOHMoneyDB.Balance
 	for i := 0; i < 3; i++ {
+		var err error
 		balances[i], err = account.InsertBalance(db, newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, i), int64(i), "GBP"))
 		fatalIfError(t, err, "Error inserting Balance for testing")
 	}
@@ -216,39 +212,6 @@ func checkAccountsSortedByIdAscending(accounts GOHMoneyDB.Accounts, t *testing.T
 	}
 }
 
-func newTestAccount() account.Account {
-	account, err := account.New(
-		"TEST_ACCOUNT",
-		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
-		gohtime.NullTime{
-			Valid: true,
-			Time:  time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
-	return account
-}
-
-func newTestDBAccount(t *testing.T, db *sql.DB) GOHMoneyDB.Account {
-	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
-	fatalIfError(t, err, "Error creating account for testing")
-	return *account
-}
-
-func fatalIfError(t *testing.T, err error, message string) {
-	if err != nil {
-		t.Fatalf("%s: %s", message, err)
-	}
-}
-
-func errorIfError(t *testing.T, err error, message string) {
-	if err != nil {
-		t.Errorf("%s: %s", message, err)
-	}
-}
-
 func TestAccount_UpdateAccount(t *testing.T) {
 	now := time.Now()
 	original, err := account.New("TEST_ACCOUNT", now, gohtime.NullTime{})
@@ -257,8 +220,7 @@ func TestAccount_UpdateAccount(t *testing.T) {
 	updatedEnd := gohtime.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
 	update, err := account.New("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
 	fatalIfError(t, err, "Error creating a for testing")
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	a, err := GOHMoneyDB.CreateAccount(db, original)
 	fatalIfError(t, err, "Error creating Account")
@@ -283,13 +245,12 @@ func TestAccount_Delete(t *testing.T) {
 	if invalid.Delete(nil) == nil {
 		t.Errorf("Expected error but none was returned when attempting to delete an invalid account.")
 	}
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	account := newTestDBAccount(t, db)
 	vErr := account.Validate(db)
 	fatalIfError(t, vErr, "Invalid account returned for testing")
-	err = account.Delete(db)
+	err := account.Delete(db)
 	fatalIfError(t, err, "Error occured whilst deleting account")
 	valid := account.Validate(db)
 	if valid == nil {
@@ -309,8 +270,7 @@ func TestAccount_JsonLoop(t *testing.T) {
 		},
 	)
 	fatalIfError(t, err, "Error creating new account for testing")
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	originalAccount, err := GOHMoneyDB.CreateAccount(db, innerAccount)
 	fatalIfError(t, err, "Error creating DB account for testing")
@@ -349,8 +309,8 @@ func TestAccounts_JSONLoop(t *testing.T) {
 		fatalIfError(t, err, "Error creating new account for testing. Error: %s")
 		innerAccounts = append(innerAccounts, innerAccount)
 	}
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Error preparing db for testing")
+	db := prepareTestDB(t)
+	defer db.Close()
 	var originalAccounts GOHMoneyDB.Accounts
 	for i := 0; i < len(innerAccounts); i++ {
 		originalAccount, err := GOHMoneyDB.CreateAccount(db, innerAccounts[i])
@@ -366,7 +326,9 @@ func TestAccounts_JSONLoop(t *testing.T) {
 	for i := 0; i < len(innerAccounts); i++ {
 		final := finalAccounts[i]
 		original := originalAccounts[i]
-		if !final.Equal(original) {
+		equal, err := final.Equal(original)
+		errorIfError(t, err, "Error comparing accounts")
+		if !equal {
 			t.Errorf("Unexpected account.\n\tExpected: %+v\n\tActuall  : %+v", original, final)
 			logBytes(t)
 			// FailNow here as logging the bytes for each loop iteration can cause an extremely long output.
@@ -376,11 +338,10 @@ func TestAccounts_JSONLoop(t *testing.T) {
 }
 
 func TestAccount_Validate(t *testing.T) {
-	db, err := prepareTestDB()
-	fatalIfError(t, err, "Unable to open DB connection")
+	db := prepareTestDB(t)
 	defer db.Close()
 	invalid := GOHMoneyDB.Account{}
-	err = invalid.Validate(db)
+	err := invalid.Validate(db)
 	if err == nil {
 		t.Errorf("Expected expected but none returned.")
 	}
@@ -400,5 +361,64 @@ func TestAccount_Validate(t *testing.T) {
 }
 
 func TestAccount_Equal(t *testing.T) {
-	t.Fail()
+	db := prepareTestDB(t)
+	defer db.Close()
+
+	a := newTestDBAccount(t, db)
+	b := a
+	assertFunc := func(expected bool) {
+		equal, err := a.Equal(b)
+		errorIfError(t, err, "Error comparing accounts")
+		assert.Equal(t, expected, equal)
+	}
+
+	b.Name = "B"
+	assertFunc(false)
+
+	b.Name = a.Name
+	assertFunc(true)
+
+	b.ID++
+	assertFunc(false)
+
+	b.ID = a.ID
+	assertFunc(true)
+
+	fatalIfError(t, a.Delete(db), "Error deleting account")
+	equal, err := a.Equal(b)
+	assert.NotNil(t, err)
+	assert.Equal(t, false, equal)
+}
+
+func newTestAccount() account.Account {
+	account, err := account.New(
+		"TEST_ACCOUNT",
+		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
+		gohtime.NullTime{
+			Valid: true,
+			Time:  time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+	return account
+}
+
+func newTestDBAccount(t *testing.T, db *sql.DB) GOHMoneyDB.Account {
+	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	fatalIfError(t, err, "Error creating account for testing")
+	return *account
+}
+
+func fatalIfError(t *testing.T, err error, message string) {
+	if err != nil {
+		t.Fatalf("%s: %s", message, err)
+	}
+}
+
+func errorIfError(t *testing.T, err error, message string) {
+	if err != nil {
+		t.Errorf("%s: %s", message, err)
+	}
 }

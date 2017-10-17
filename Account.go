@@ -262,12 +262,16 @@ func (a Account) Validate(db *sql.DB) error {
 	return err
 }
 
-func (a Account) Equal(b Account) bool {
+// Equal return true if two Accounts are identical.
+func (a Account) Equal(b Account) (bool, error) {
 	if a.ID != b.ID {
-		return false
+		return false, nil
 	}
 	if !a.Account.Equal(b.Account) {
-		return false
+		return false, nil
 	}
-	return true
+	if !a.deletedAt.Equal(b.deletedAt) {
+		return false, errors.New("accounts are equal but one has been deleted")
+	}
+	return true, nil
 }
