@@ -129,17 +129,12 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC).Truncate(time.Hour * 24)
 	validBalance, _ := balance.New(validDate, money.GBP(123456))
 	insertedBalance, err := dbAccount.InsertBalance(db, validBalance)
-	if err != nil {
-		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", nil, err)
-	}
+	errorIfError(t, err, "Expected nil error bit got")
 	if insertedBalance.ID != initialLastID+1 {
 		t.Errorf("Expected ID to incremement by 1.\nInitial last ID: %d\nInserted Balance ID: %d", initialLastID, insertedBalance.ID)
 	}
 	if !insertedBalance.Balance.Equal(validBalance) {
 		t.Errorf("Inserted balance does not equal original.\nInserted: %v\nOriginal: %v", insertedBalance, validBalance)
-	}
-	if !insertedBalance.Date().Equal(validDate) {
-		t.Errorf("Inserted balance date should be %s but is %s", validDate, insertedBalance.Date().String())
 	}
 	err = dbAccount.ValidateBalance(db, insertedBalance)
 	if err != nil {
