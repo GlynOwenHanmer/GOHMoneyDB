@@ -10,10 +10,11 @@ import (
 
 	"encoding/json"
 
-	"github.com/GlynOwenHanmer/GOHMoney/balance"
-	"github.com/GlynOwenHanmer/GOHMoney/money"
-	"github.com/GlynOwenHanmer/GOHMoneyDB"
+	"github.com/glynternet/GOHMoney/balance"
+	"github.com/glynternet/GOHMoney/money"
+	"github.com/glynternet/GOHMoneyDB"
 	"github.com/stretchr/testify/assert"
+	"github.com/glynternet/GOHMoney/common"
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
@@ -59,9 +60,10 @@ func TestBalancesForValidAccountId(t *testing.T) {
 	if expectedID != actualID {
 		t.Errorf(`Unexpected Balance ID.\nExpected: %d\nActual:  %d`, expectedID, actualID)
 	}
-	expectedAmount := money.GBP(63641)
+	expectedAmount, err :=  money.New(63641, "GBP")
+	common.FatalIfError(t, err, "Creating Money")
 	actualAmount := (*balances)[0].Money()
-	if eq, err := actualAmount.Equal(expectedAmount); !eq || (err != nil) {
+	if eq, err := actualAmount.Equal(*expectedAmount); !eq || (err != nil) {
 		t.Errorf("account ID: %d, first balance, expected balance amount of %f but got %f", validID, expectedAmount, actualAmount)
 	}
 	expectedDate := time.Date(2016, 06, 17, 0, 0, 0, 0, time.UTC)
@@ -76,14 +78,10 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
 	account, err := GOHMoneyDB.SelectAccountWithID(db, accountID)
-	if err != nil {
-		t.Errorf("Error selecting account with ID %d for testing: %s", accountID, err.Error())
-	}
+	common.ErrorIfError(t, err, "Selecting account")
 	dbAccount := GOHMoneyDB.Account(account)
 	startingBalances, err := dbAccount.Balances(db)
-	if err != nil {
-		t.Fatalf("Unable to get balances for testing for account: %s\nError: %s", dbAccount, err)
-	}
+	common.FatalIfErrorf(t, err, "Getting balances for account %+v", dbAccount)
 	invalidBalance := balance.Balance{}
 	insertedBalance, err := dbAccount.InsertBalance(db, invalidBalance)
 	if err != balance.ZeroDate {
@@ -95,21 +93,14 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	if !insertedBalance.Date().IsZero() {
 		t.Errorf("Inserted balance date should be zero but is: %s", insertedBalance.Date().String())
 	}
-	expected := money.GBP(0)
 	actual := insertedBalance.Money()
-	if equal, _ := (&actual).Equal(expected); !equal {
-		t.Errorf("Inserted balance amount should be %f but is %f", expected, insertedBalance.Money())
-	}
-	if insertedBalance.ID != 0 {
-		t.Errorf("Inserted balance ID should be %d but is %d", 0, insertedBalance.ID)
-	}
+	assert.Equal(t, actual.Amount(), int64(0))
+	_, err = actual.Currency()
+	assert.Equal(t, money.ErrNoCurrency, err)
+	assert.Equal(t, insertedBalance.ID, uint(0))
 	balancesAfterTest, err := dbAccount.Balances(db)
-	if err != nil {
-		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
-	}
-	if len(*startingBalances) != len(*balancesAfterTest) {
-		t.Errorf("Number of balances changed during test.\nBefore: %d\nAfter : %d", len(*startingBalances), len(*balancesAfterTest))
-	}
+	common.FatalIfError(t, err, "Getting Balances")
+	assert.Equal(t, len(*startingBalances), len(*balancesAfterTest), "Number of Balances changed")
 }
 
 func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
@@ -127,9 +118,11 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 		t.Fatalf("Unable to get balances for testing for account: %s\nError: %s", dbAccount, err)
 	}
 	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC).Truncate(time.Hour * 24)
-	validBalance, _ := balance.New(validDate, money.GBP(123456))
+	m, err :=  money.New(123456, "GBP")
+	common.FatalIfError(t, err, "Creating Money")
+	validBalance, _ := balance.New(validDate, *m)
 	insertedBalance, err := dbAccount.InsertBalance(db, validBalance)
-	errorIfError(t, err, "Expected nil error bit got")
+	common.ErrorIfError(t, err, "Expected nil error bit got")
 	if insertedBalance.ID != initialLastID+1 {
 		t.Errorf("Expected ID to incremement by 1.\nInitial last ID: %d\nInserted Balance ID: %d", initialLastID, insertedBalance.ID)
 	}
@@ -184,7 +177,9 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	b, _ := balance.New(account.Start().AddDate(0, 0, 1), money.GBP(0))
+	m, err :=  money.New(0, "GBP")
+	common.FatalIfError(t, err, "Creating Money")
+	b, _ := balance.New(account.Start().AddDate(0, 0, 1), *m)
 	validBalance, err := account.InsertBalance(db, b)
 	if err != nil {
 		t.Fatalf(`Error inserting new balance for testing. Error :%s`, err)
@@ -449,7 +444,7 @@ func TestBalance_JSONLoop(t *testing.T) {
 		Money money.Money
 	}{}
 	err = json.Unmarshal(jsonBytes, &b)
-	fatalIfError(t, err, "Unmarshaling json for testing")
+	common.FatalIfError(t, err, "Unmarshaling json for testing")
 	assert.Equal(t, a.ID, b.ID, "JSON: %s", string(jsonBytes))
 	assert.Equal(t, a.Date(), b.Date)
 	assert.Equal(t, a.Money(), b.Money)

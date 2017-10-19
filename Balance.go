@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney/balance"
-	"github.com/GlynOwenHanmer/GOHMoney/money"
+	"github.com/glynternet/GOHMoney/balance"
+	"github.com/glynternet/GOHMoney/money"
 )
 
 const (
-	balanceInsertFields  string = "account_id, date, balance, currency"
-	balanceSelectFields  string = "id, date, balance, currency"
-	bBalanceSelectFields string = "b.id, b.date, b.balance, currency"
+	balanceInsertFields   = "account_id, date, balance, currency"
+	balanceSelectFields   = "id, date, balance, currency"
+	bBalanceSelectFields  = "b.id, b.date, b.balance, currency"
 )
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.

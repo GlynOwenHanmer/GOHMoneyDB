@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney/account"
-	gohtime "github.com/GlynOwenHanmer/go-time"
+	"github.com/glynternet/GOHMoney/account"
+	gohtime "github.com/glynternet/go-time"
 	"github.com/lib/pq"
 )
 

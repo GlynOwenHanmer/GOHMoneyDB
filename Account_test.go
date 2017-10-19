@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney/account"
-	"github.com/GlynOwenHanmer/GOHMoneyDB"
-	gohtime "github.com/GlynOwenHanmer/go-time"
+	"github.com/glynternet/GOHMoney/account"
+	"github.com/glynternet/GOHMoneyDB"
+	gohtime "github.com/glynternet/go-time"
 	"github.com/stretchr/testify/assert"
+	"github.com/glynternet/GOHMoney/common"
 )
 
 func Test_CreateAccount(t *testing.T) {
@@ -48,7 +49,7 @@ func Test_CreateAccount(t *testing.T) {
 	defer close(t, db)
 	for _, testSet := range testSets {
 		newAccount, err := account.New(testSet.name, testSet.start, testSet.end)
-		fatalIfError(t, err, "Error creating new account for testing")
+		common.FatalIfError(t, err, "Error creating new account for testing")
 		actualCreatedAccount, err := GOHMoneyDB.CreateAccount(db, newAccount)
 		if testSet.error == nil && err != nil || testSet.error != nil && err == nil {
 			t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
@@ -66,7 +67,7 @@ func Test_CreateAccount(t *testing.T) {
 				Time:  testSet.end.Time.Truncate(24 * time.Hour),
 			},
 		)
-		fatalIfError(t, err, "Error creating account for testing")
+		common.FatalIfError(t, err, "Error creating account for testing")
 		if !actualCreatedAccount.Account.Equal(expectedAccount) {
 			t.Errorf("Unexpected account:\nExpected: %+v\nActual  : %+v", expectedAccount, actualCreatedAccount)
 		}
@@ -96,7 +97,7 @@ func Test_SelectAccountsOpen(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
 	openAccounts, err := GOHMoneyDB.SelectAccountsOpen(db)
-	fatalIfError(t, err, "Error running SelectAccountsOpen method")
+	common.FatalIfError(t, err, "Error running SelectAccountsOpen method")
 	if len(*openAccounts) == 0 {
 		t.Fatalf("No accounts were returned.")
 	}
@@ -157,7 +158,7 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
-	fatalIfError(t, err, "Error inserting account for testing")
+	common.FatalIfError(t, err, "Error inserting account for testing")
 	// Account with no Balances
 	b, err := account.SelectBalanceWithID(db, 10)
 	expectedErr := GOHMoneyDB.NoBalances
@@ -168,7 +169,7 @@ func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 
 	innerBalance := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 10), 10, "GBP")
 	validBalance, err := account.InsertBalance(db, innerBalance)
-	fatalIfError(t, err, "Error occurred whilst inserting Balance for testing")
+	common.FatalIfError(t, err, "Error occurred whilst inserting Balance for testing")
 	if validBalance.ID < 1 {
 		t.Fatalf("Inserted balance returned balance of less than 1 so cannot be subtracted from to make invalid uint Balance ID")
 	}
@@ -188,12 +189,12 @@ func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		var err error
 		balances[i], err = account.InsertBalance(db, newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, i), int64(i), "GBP"))
-		fatalIfError(t, err, "Error inserting Balance for testing")
+		common.FatalIfError(t, err, "Error inserting Balance for testing")
 	}
 	for _, balance := range balances {
 		selectedBalance, err := account.SelectBalanceWithID(db, balance.ID)
-		errorIfError(t, err, "Expected nil error but recieved error")
-		errorIfError(t, err, fmt.Sprintf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance))
+		common.ErrorIfError(t, err, "Expected nil error but recieved error")
+		common.ErrorIfError(t, err, fmt.Sprintf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance))
 	}
 }
 
@@ -215,17 +216,17 @@ func checkAccountsSortedByIdAscending(accounts GOHMoneyDB.Accounts, t *testing.T
 func TestAccount_UpdateAccount(t *testing.T) {
 	now := time.Now()
 	original, err := account.New("TEST_ACCOUNT", now, gohtime.NullTime{})
-	fatalIfError(t, err, "Error creating a for testing")
+	common.FatalIfError(t, err, "Error creating a for testing")
 	updatedStart := now.AddDate(1, 0, 0)
 	updatedEnd := gohtime.NullTime{Valid: true, Time: updatedStart.AddDate(2, 0, 0)}
 	update, err := account.New("TEST_ACCOUNT_UPDATED", updatedStart, updatedEnd)
-	fatalIfError(t, err, "Error creating a for testing")
+	common.FatalIfError(t, err, "Error creating a for testing")
 	db := prepareTestDB(t)
 	defer close(t, db)
 	a, err := GOHMoneyDB.CreateAccount(db, original)
-	fatalIfError(t, err, "Error creating Account")
+	common.FatalIfError(t, err, "Error creating Account")
 	updated, err := a.Update(db, update)
-	errorIfError(t, err, "Error updating account")
+	common.ErrorIfError(t, err, "Error updating account")
 	expected, err := account.New(
 		update.Name,
 		update.Start().Truncate(24*time.Hour),
@@ -234,7 +235,7 @@ func TestAccount_UpdateAccount(t *testing.T) {
 			Time:  update.End().Time.Truncate(24 * time.Hour),
 		},
 	)
-	fatalIfError(t, err, "Error creating expected account for testing")
+	common.FatalIfError(t, err, "Error creating expected account for testing")
 	if !updated.Account.Equal(expected) {
 		t.Errorf("Updates not applied as expected.\nUpdated a: %s\nApplied updates: %s", updated, expected)
 	}
@@ -249,9 +250,9 @@ func TestAccount_Delete(t *testing.T) {
 	defer close(t, db)
 	account := newTestDBAccount(t, db)
 	vErr := account.Validate(db)
-	fatalIfError(t, vErr, "Invalid account returned for testing")
+	common.FatalIfError(t, vErr, "Invalid account returned for testing")
 	err := account.Delete(db)
-	fatalIfError(t, err, "Error occured whilst deleting account")
+	common.FatalIfError(t, err, "Error occured whilst deleting account")
 	valid := account.Validate(db)
 	if valid == nil {
 		t.Fatalf("Account still valid after deletion.")
@@ -269,16 +270,16 @@ func TestAccount_JsonLoop(t *testing.T) {
 			Time:  time.Now().AddDate(1, 0, 0),
 		},
 	)
-	fatalIfError(t, err, "Error creating new account for testing")
+	common.FatalIfError(t, err, "Error creating new account for testing")
 	db := prepareTestDB(t)
 	defer close(t, db)
 	originalAccount, err := GOHMoneyDB.CreateAccount(db, innerAccount)
-	fatalIfError(t, err, "Error creating DB account for testing")
+	common.FatalIfError(t, err, "Error creating DB account for testing")
 	originalBytes, err := json.Marshal(originalAccount)
-	fatalIfError(t, err, "Error marshalling account into json")
+	common.FatalIfError(t, err, "Error marshalling account into json")
 	var finalAccount GOHMoneyDB.Account
 	err = json.Unmarshal(originalBytes, &finalAccount)
-	fatalIfError(t, err, "Error unmarshalling account")
+	common.FatalIfError(t, err, "Error unmarshalling account")
 	logBytes := func(t *testing.T) { t.Log("Marshalled account: " + string(originalBytes)) }
 	if finalAccount.ID != originalAccount.ID {
 		t.Errorf("Unexpected account id.\n\tExpected: %d\n\tActuall  : %d", originalAccount.ID, finalAccount.ID)
@@ -306,7 +307,7 @@ func TestAccounts_JSONLoop(t *testing.T) {
 				Time:  time.Now().AddDate(1, 0, 0),
 			},
 		)
-		fatalIfError(t, err, "Error creating new account for testing. Error: %s")
+		common.FatalIfError(t, err, "Error creating new account for testing. Error: %s")
 		innerAccounts = append(innerAccounts, innerAccount)
 	}
 	db := prepareTestDB(t)
@@ -314,20 +315,20 @@ func TestAccounts_JSONLoop(t *testing.T) {
 	var originalAccounts GOHMoneyDB.Accounts
 	for i := 0; i < len(innerAccounts); i++ {
 		originalAccount, err := GOHMoneyDB.CreateAccount(db, innerAccounts[i])
-		fatalIfError(t, err, "Error creating DB account for testing")
+		common.FatalIfError(t, err, "Error creating DB account for testing")
 		originalAccounts = append(originalAccounts, *originalAccount)
 	}
 	originalBytes, err := json.Marshal(originalAccounts)
-	fatalIfError(t, err, "Error marshalling account into json")
+	common.FatalIfError(t, err, "Error marshalling account into json")
 	var finalAccounts GOHMoneyDB.Accounts
 	err = json.Unmarshal(originalBytes, &finalAccounts)
-	fatalIfError(t, err, "Error unmarshalling accounts json")
+	common.FatalIfError(t, err, "Error unmarshalling accounts json")
 	logBytes := func(t *testing.T) { t.Log("Marshalled accounts: " + string(originalBytes)) }
 	for i := 0; i < len(innerAccounts); i++ {
 		final := finalAccounts[i]
 		original := originalAccounts[i]
 		equal, err := final.Equal(original)
-		errorIfError(t, err, "Error comparing accounts")
+		common.ErrorIfError(t, err, "Error comparing accounts")
 		if !equal {
 			t.Errorf("Unexpected account.\n\tExpected: %+v\n\tActuall  : %+v", original, final)
 			logBytes(t)
@@ -355,9 +356,9 @@ func TestAccount_Validate(t *testing.T) {
 	}
 
 	valid, err := GOHMoneyDB.SelectAccountWithID(db, 1)
-	fatalIfError(t, err, "Error selecting valid account for testing")
+	common.FatalIfError(t, err, "Error selecting valid account for testing")
 	validErr := valid.Validate(db)
-	errorIfError(t, validErr, "Expected nil error but got")
+	common.ErrorIfError(t, validErr, "Expected nil error but got")
 }
 
 func TestAccount_Equal(t *testing.T) {
@@ -368,7 +369,7 @@ func TestAccount_Equal(t *testing.T) {
 	b := a
 	assertFunc := func(expected bool) {
 		equal, err := a.Equal(b)
-		errorIfError(t, err, "Error comparing accounts")
+		common.ErrorIfError(t, err, "Error comparing accounts")
 		assert.Equal(t, expected, equal)
 	}
 
@@ -384,7 +385,7 @@ func TestAccount_Equal(t *testing.T) {
 	b.ID = a.ID
 	assertFunc(true)
 
-	fatalIfError(t, a.Delete(db), "Error deleting account")
+	common.FatalIfError(t, a.Delete(db), "Error deleting account")
 	equal, err := a.Equal(b)
 	assert.NotNil(t, err)
 	assert.Equal(t, false, equal)
@@ -407,18 +408,6 @@ func newTestAccount() account.Account {
 
 func newTestDBAccount(t *testing.T, db *sql.DB) GOHMoneyDB.Account {
 	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
-	fatalIfError(t, err, "Error creating account for testing")
+	common.FatalIfError(t, err, "Error creating account for testing")
 	return *account
-}
-
-func fatalIfError(t *testing.T, err error, message string) {
-	if err != nil {
-		t.Fatalf("%s: %s", message, err)
-	}
-}
-
-func errorIfError(t *testing.T, err error, message string) {
-	if err != nil {
-		t.Errorf("%s: %s", message, err)
-	}
 }
