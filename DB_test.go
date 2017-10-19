@@ -5,9 +5,10 @@ import (
 	"os/user"
 	"testing"
 
-	"github.com/glynternet/GOHMoneyDB"
 	"io"
+
 	"github.com/glynternet/GOHMoney/common"
+	"github.com/glynternet/GOHMoneyDB"
 )
 
 func Test_prepareTestDB(t *testing.T) {

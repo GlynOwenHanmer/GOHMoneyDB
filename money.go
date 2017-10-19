@@ -7,6 +7,7 @@ import (
 type dbMoney struct {
 	innerMoney money.Money
 }
+
 //
 //func (m *dbMoney) Scan(src interface{}) error {
 //	f, ok := src.(float64)

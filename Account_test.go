@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/glynternet/GOHMoney/account"
+	"github.com/glynternet/GOHMoney/common"
 	"github.com/glynternet/GOHMoneyDB"
 	gohtime "github.com/glynternet/go-time"
 	"github.com/stretchr/testify/assert"
-	"github.com/glynternet/GOHMoney/common"
 )
 
 func Test_CreateAccount(t *testing.T) {

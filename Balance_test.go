@@ -11,10 +11,10 @@ import (
 	"encoding/json"
 
 	"github.com/glynternet/GOHMoney/balance"
+	"github.com/glynternet/GOHMoney/common"
 	"github.com/glynternet/GOHMoney/money"
 	"github.com/glynternet/GOHMoneyDB"
 	"github.com/stretchr/testify/assert"
-	"github.com/glynternet/GOHMoney/common"
 )
 
 func Test_BalancesForInvalidAccountId(t *testing.T) {
@@ -60,7 +60,7 @@ func TestBalancesForValidAccountId(t *testing.T) {
 	if expectedID != actualID {
 		t.Errorf(`Unexpected Balance ID.\nExpected: %d\nActual:  %d`, expectedID, actualID)
 	}
-	expectedAmount, err :=  money.New(63641, "GBP")
+	expectedAmount, err := money.New(63641, "GBP")
 	common.FatalIfError(t, err, "Creating Money")
 	actualAmount := (*balances)[0].Money()
 	if eq, err := actualAmount.Equal(*expectedAmount); !eq || (err != nil) {
@@ -118,7 +118,7 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 		t.Fatalf("Unable to get balances for testing for account: %s\nError: %s", dbAccount, err)
 	}
 	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC).Truncate(time.Hour * 24)
-	m, err :=  money.New(123456, "USD")
+	m, err := money.New(123456, "USD")
 	common.FatalIfError(t, err, "Creating Money")
 	validBalance, _ := balance.New(validDate, *m)
 	insertedBalance, err := dbAccount.InsertBalance(db, validBalance)
@@ -177,7 +177,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	m, err :=  money.New(0, "GBP")
+	m, err := money.New(0, "GBP")
 	common.FatalIfError(t, err, "Creating Money")
 	b, _ := balance.New(account.Start().AddDate(0, 0, 1), *m)
 	validBalance, err := account.InsertBalance(db, b)

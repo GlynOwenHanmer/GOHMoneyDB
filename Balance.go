@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	balanceInsertFields   = "account_id, date, balance, currency"
-	balanceSelectFields   = "id, date, balance, currency"
-	bBalanceSelectFields  = "b.id, b.date, b.balance, currency"
+	balanceInsertFields  = "account_id, date, balance, currency"
+	balanceSelectFields  = "id, date, balance, currency"
+	bBalanceSelectFields = "b.id, b.date, b.balance, currency"
 )
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.
