@@ -85,7 +85,11 @@ func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.Bala
 	}
 	amount := update.Money()
 	floatAmount := float64((&amount).Amount()) / 100.
-	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, floatAmount, update.Date(), original.ID)
+	currency, err := amount.Currency()
+	if err != nil {
+		return Balance{}, err
+	}
+	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2, currency = $3 WHERE id = $4 returning `+balanceSelectFields, floatAmount, update.Date(), currency.Code, original.ID)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
