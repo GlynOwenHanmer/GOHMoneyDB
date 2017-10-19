@@ -64,7 +64,7 @@ func TestBalancesForValidAccountId(t *testing.T) {
 	common.FatalIfError(t, err, "Creating Money")
 	actualAmount := (*balances)[0].Money()
 	if eq, err := actualAmount.Equal(*expectedAmount); !eq || (err != nil) {
-		t.Errorf("account ID: %d, first balance, expected balance amount of %f but got %f", validID, expectedAmount, actualAmount)
+		t.Errorf("account ID: %d, first balance, expected balance amount of %+v but got %+v", validID, expectedAmount, actualAmount)
 	}
 	expectedDate := time.Date(2016, 06, 17, 0, 0, 0, 0, time.UTC)
 	actualDate := (*balances)[0].Date()
@@ -118,7 +118,7 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 		t.Fatalf("Unable to get balances for testing for account: %s\nError: %s", dbAccount, err)
 	}
 	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC).Truncate(time.Hour * 24)
-	m, err :=  money.New(123456, "GBP")
+	m, err :=  money.New(123456, "USD")
 	common.FatalIfError(t, err, "Creating Money")
 	validBalance, _ := balance.New(validDate, *m)
 	insertedBalance, err := dbAccount.InsertBalance(db, validBalance)
@@ -127,7 +127,7 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 		t.Errorf("Expected ID to incremement by 1.\nInitial last ID: %d\nInserted Balance ID: %d", initialLastID, insertedBalance.ID)
 	}
 	if !insertedBalance.Balance.Equal(validBalance) {
-		t.Errorf("Inserted balance does not equal original.\nInserted: %v\nOriginal: %v", insertedBalance, validBalance)
+		t.Errorf("Inserted balance does not equal original.\nInserted: %+v\nOriginal: %+v", insertedBalance.Balance, validBalance)
 	}
 	err = dbAccount.ValidateBalance(db, insertedBalance)
 	if err != nil {

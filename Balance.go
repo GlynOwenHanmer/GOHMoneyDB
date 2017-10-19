@@ -135,7 +135,7 @@ func scanRowForBalance(row *sql.Row) (*Balance, error) {
 	var amount float64
 	var currency string
 	err := row.Scan(&ID, &date, &amount, &currency)
-	b, _ := newBalance(ID, date, amount, "GBP")
+	b, _ := newBalance(ID, date, amount, currency)
 	if err == sql.ErrNoRows {
 		err = NoBalances
 	}
