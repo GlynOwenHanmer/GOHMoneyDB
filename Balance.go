@@ -46,7 +46,7 @@ func (a Account) Balances(db *sql.DB) (*Balances, error) {
 func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 	rows, err := db.Query("SELECT "+balanceSelectFields+" FROM balances b WHERE account_id = $1 ORDER BY date ASC, ID ASC", accountID)
 	if err != nil {
-		return &Balances{}, err
+		return new(Balances), err
 	}
 	defer close(rows)
 	return scanRowsForBalances(rows)

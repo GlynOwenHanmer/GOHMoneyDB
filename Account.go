@@ -100,7 +100,7 @@ func SelectAccounts(db *sql.DB) (*Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts WHERE deleted_at IS NULL ORDER BY id ASC;"
 	rows, err := db.Query(queryString)
 	if err != nil {
-		return &Accounts{}, err
+		return new(Accounts), err
 	}
 	defer close(rows)
 	return scanRowsForAccounts(rows)
@@ -111,7 +111,7 @@ func SelectAccountsOpen(db *sql.DB) (*Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts WHERE date_closed IS NULL AND deleted_at IS NULL ORDER BY id ASC;"
 	rows, err := db.Query(queryString)
 	if err != nil {
-		return &Accounts{}, err
+		return new(Accounts), err
 	}
 	defer close(rows)
 	return scanRowsForAccounts(rows)
@@ -128,7 +128,7 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 		err = NoAccountWithIDError(id)
 	}
 	if account == nil {
-		account = &Account{}
+		account = new(Account)
 	}
 	return *account, err
 }
@@ -137,7 +137,7 @@ func SelectAccountWithID(db *sql.DB, id uint) (Account, error) {
 func CreateAccount(db *sql.DB, newAccount account.Account) (*Account, error) {
 	newAccountFieldErrors := newAccount.Validate()
 	if newAccountFieldErrors != nil {
-		return &Account{}, newAccountFieldErrors
+		return new(Account), newAccountFieldErrors
 	}
 	var queryString bytes.Buffer
 	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, insertFields)
@@ -151,7 +151,7 @@ func CreateAccount(db *sql.DB, newAccount account.Account) (*Account, error) {
 // Otherwise, SelectBalanceWithID returns an empty Balance object and an error.
 func (a Account) SelectBalanceWithID(db *sql.DB, id uint) (*Balance, error) {
 	if err := a.Validate(db); err != nil {
-		return &Balance{}, err
+		return new(Balance), err
 	}
 	var query bytes.Buffer
 	fmt.Fprintf(&query, `SELECT %s FROM balances b JOIN accounts a ON b.account_id = a.id `, bBalanceSelectFields)
