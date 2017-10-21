@@ -10,9 +10,10 @@ import (
 
 	"encoding/json"
 
-	"github.com/GlynOwenHanmer/GOHMoney/balance"
-	"github.com/GlynOwenHanmer/GOHMoney/money"
-	"github.com/GlynOwenHanmer/GOHMoneyDB"
+	"github.com/glynternet/GOHMoney/balance"
+	"github.com/glynternet/GOHMoney/common"
+	"github.com/glynternet/GOHMoney/money"
+	"github.com/glynternet/GOHMoneyDB"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,13 +43,9 @@ func TestBalancesForValidAccountId(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
 	a, err := GOHMoneyDB.SelectAccountWithID(db, validID)
-	if err != nil {
-		t.Errorf("Error selecting account for testings: %s", err)
-	}
+	common.ErrorIfError(t, err, "Selecting accounts for testing")
 	balances, err := a.Balances(db)
-	if err != nil {
-		t.Errorf("ID: %d, expected nil error but got: %s", validID, err.Error())
-	}
+	common.ErrorIfErrorf(t, err, "Getting balances for account %d", validID)
 	minBalances := 91
 	if len(*balances) < minBalances {
 		t.Errorf("account ID: %d, expected at least %d balances but got: %d", validID, minBalances, len(*balances))
@@ -59,10 +56,11 @@ func TestBalancesForValidAccountId(t *testing.T) {
 	if expectedID != actualID {
 		t.Errorf(`Unexpected Balance ID.\nExpected: %d\nActual:  %d`, expectedID, actualID)
 	}
-	expectedAmount := money.GBP(63641)
+	expectedAmount, err := money.New(63641, "GBP")
+	common.FatalIfError(t, err, "Creating Money")
 	actualAmount := (*balances)[0].Money()
-	if eq, err := actualAmount.Equal(expectedAmount); !eq || (err != nil) {
-		t.Errorf("account ID: %d, first balance, expected balance amount of %f but got %f", validID, expectedAmount, actualAmount)
+	if eq, err := actualAmount.Equal(*expectedAmount); !eq || (err != nil) {
+		t.Errorf("account ID: %d, first balance, expected balance amount of %+v but got %+v", validID, expectedAmount, actualAmount)
 	}
 	expectedDate := time.Date(2016, 06, 17, 0, 0, 0, 0, time.UTC)
 	actualDate := (*balances)[0].Date()
@@ -76,14 +74,10 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
 	account, err := GOHMoneyDB.SelectAccountWithID(db, accountID)
-	if err != nil {
-		t.Errorf("Error selecting account with ID %d for testing: %s", accountID, err.Error())
-	}
+	common.ErrorIfError(t, err, "Selecting account")
 	dbAccount := GOHMoneyDB.Account(account)
 	startingBalances, err := dbAccount.Balances(db)
-	if err != nil {
-		t.Fatalf("Unable to get balances for testing for account: %s\nError: %s", dbAccount, err)
-	}
+	common.FatalIfErrorf(t, err, "Getting balances for account %+v", dbAccount)
 	invalidBalance := balance.Balance{}
 	insertedBalance, err := dbAccount.InsertBalance(db, invalidBalance)
 	if err != balance.ZeroDate {
@@ -95,21 +89,14 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	if !insertedBalance.Date().IsZero() {
 		t.Errorf("Inserted balance date should be zero but is: %s", insertedBalance.Date().String())
 	}
-	expected := money.GBP(0)
 	actual := insertedBalance.Money()
-	if equal, _ := (&actual).Equal(expected); !equal {
-		t.Errorf("Inserted balance amount should be %f but is %f", expected, insertedBalance.Money())
-	}
-	if insertedBalance.ID != 0 {
-		t.Errorf("Inserted balance ID should be %d but is %d", 0, insertedBalance.ID)
-	}
+	assert.Equal(t, actual.Amount(), int64(0))
+	_, err = actual.Currency()
+	assert.Equal(t, money.ErrNoCurrency, err)
+	assert.Equal(t, insertedBalance.ID, uint(0))
 	balancesAfterTest, err := dbAccount.Balances(db)
-	if err != nil {
-		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
-	}
-	if len(*startingBalances) != len(*balancesAfterTest) {
-		t.Errorf("Number of balances changed during test.\nBefore: %d\nAfter : %d", len(*startingBalances), len(*balancesAfterTest))
-	}
+	common.FatalIfError(t, err, "Getting Balances")
+	assert.Equal(t, len(*startingBalances), len(*balancesAfterTest), "Number of Balances changed")
 }
 
 func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
@@ -118,32 +105,28 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 	defer close(t, db)
 	initialLastID := getHighestBalanceID(db, t)
 	account, err := GOHMoneyDB.SelectAccountWithID(db, accountID)
-	if err != nil {
-		t.Errorf("Error selecting account with ID %d for testing: %s", accountID, err.Error())
-	}
+	common.ErrorIfErrorf(t, err, "Error selecting account with ID %d for testing", accountID)
 	dbAccount := GOHMoneyDB.Account(account)
 	startingBalances, err := dbAccount.Balances(db)
 	if err != nil {
-		t.Fatalf("Unable to get balances for testing for account: %s\nError: %s", dbAccount, err)
+		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
 	}
 	validDate := time.Date(3000, 6, 1, 1, 1, 1, 1, time.UTC).Truncate(time.Hour * 24)
-	validBalance, _ := balance.New(validDate, money.GBP(123456))
+	m, err := money.New(123456, "USD")
+	common.FatalIfError(t, err, "Creating Money")
+	validBalance, _ := balance.New(validDate, *m)
 	insertedBalance, err := dbAccount.InsertBalance(db, validBalance)
-	errorIfError(t, err, "Expected nil error bit got")
+	common.ErrorIfError(t, err, "Expected nil error bit got")
 	if insertedBalance.ID != initialLastID+1 {
 		t.Errorf("Expected ID to incremement by 1.\nInitial last ID: %d\nInserted Balance ID: %d", initialLastID, insertedBalance.ID)
 	}
 	if !insertedBalance.Balance.Equal(validBalance) {
-		t.Errorf("Inserted balance does not equal original.\nInserted: %v\nOriginal: %v", insertedBalance, validBalance)
+		t.Errorf("Inserted balance does not equal original.\nInserted: %+v\nOriginal: %+v", insertedBalance.Balance, validBalance)
 	}
 	err = dbAccount.ValidateBalance(db, insertedBalance)
-	if err != nil {
-		t.Errorf("Expected inserted balance to be valid against account.\nError: %s\nAccount: %s\nBalance: %s", err, dbAccount, insertedBalance)
-	}
+	common.ErrorIfErrorf(t, err, "Expected inserted balance to be valid against account.\nError: %s\nAccount: %s\nBalance: %s", err, dbAccount, insertedBalance)
 	balancesAfterTest, err := dbAccount.Balances(db)
-	if err != nil {
-		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
-	}
+	common.ErrorIfErrorf(t, err, "Unable to get balances for testing for account: %s", dbAccount)
 	expectedDiff := 1
 	balancesCountDiff := len(*balancesAfterTest) - len(*startingBalances)
 	if balancesCountDiff != expectedDiff {
@@ -184,14 +167,16 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	b, _ := balance.New(account.Start().AddDate(0, 0, 1), money.GBP(0))
+	m, err := money.New(0, "YEN")
+	common.FatalIfError(t, err, "Creating Money")
+	b, _ := balance.New(account.Start().AddDate(0, 0, 1), *m)
 	validBalance, err := account.InsertBalance(db, b)
 	if err != nil {
 		t.Fatalf(`Error inserting new balance for testing. Error :%s`, err)
 	}
 	outOfDateRange := GOHMoneyDB.Balance{
 		ID:      account.ID,
-		Balance: newInnerBalanceIgnoreError(time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC), 0, "GBP"),
+		Balance: newInnerBalanceIgnoreError(time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC), 0, "USD"),
 	}
 	balanceWithWrongOwner := GOHMoneyDB.Balance{
 		ID:      account.ID - 1,
@@ -243,12 +228,12 @@ func Test_UpdateBalance_WrongAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(accountA.Start(), 0, "GBP")
+	newBalance := newInnerBalanceIgnoreError(accountA.Start(), 0, "EUR")
 	createdBalanceA, err := accountA.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
-	update := newInnerBalanceIgnoreError(time.Now(), 100, "GBP")
+	update := newInnerBalanceIgnoreError(time.Now(), 100, "EUR")
 	updatedBalance, err := accountB.UpdateBalance(db, createdBalanceA, update)
 	expectedError := GOHMoneyDB.InvalidAccountBalanceError{AccountID: accountB.ID, BalanceID: createdBalanceA.ID}
 	if err != expectedError {
@@ -267,7 +252,7 @@ func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "GBP")
+	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "CZK")
 	createdBalance, err := account.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
@@ -292,12 +277,12 @@ func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "GBP")
+	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "EUR")
 	createdBalance, err := account.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
-	update := newInnerBalanceIgnoreError(account.Start().AddDate(-1, 0, 0), 0, "GBP")
+	update := newInnerBalanceIgnoreError(account.Start().AddDate(-1, 0, 0), 0, "USD")
 	_, err = account.UpdateBalance(db, createdBalance, update)
 	expectedError := `Update is not valid for account: ` + balance.DateOutOfAccountTimeRange{}.Error()
 	if err == nil {
@@ -314,12 +299,12 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "GBP")
+	newBalance := newInnerBalanceIgnoreError(account.Start(), 0, "USD")
 	createdBalance, err := account.InsertBalance(db, newBalance)
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
-	update := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 1), 100, "GBP")
+	update := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 1), 100, "EUR")
 	updatedBalance, err := account.UpdateBalance(db, createdBalance, update)
 	expectedError := error(nil)
 	if err != expectedError {
@@ -357,11 +342,8 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 	if err != expectedError {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", expectedError, err)
 	}
-	expectedBalance := GOHMoneyDB.Balance{ID: 0, Balance: newInnerBalanceIgnoreError(time.Time{}, 0, "GBP")}
-
-	if !expectedBalance.Equal(b) {
-		t.Errorf("Unexpected b.\nExpected: %s\nActual  : %s", expectedBalance, b)
-	}
+	expectedBalance := GOHMoneyDB.Balance{}
+	assert.Equal(t, expectedBalance, b)
 
 	balances := [5]balance.Balance{
 		newInnerBalanceIgnoreError(time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC), 0, "GBP"),
@@ -393,7 +375,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 			// No balances exist before date
 			balances[0].Date().AddDate(-1, 0, 0),
 			GOHMoneyDB.NoBalances,
-			GOHMoneyDB.Balance{ID: 0, Balance: newInnerBalanceIgnoreError(time.Time{}, 0, "GBP")},
+			GOHMoneyDB.Balance{},
 		},
 		{
 			// Balance exists before date
@@ -428,16 +410,12 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 			message += fmt.Sprintf("\nFor time: %v", testSet.Time)
 			t.Error(message)
 		}
-		if !b.Equal(testSet.expectedBalance) {
-			message := fmt.Sprintf("Unexpected b.\nExpected: %s\nActual  : %s", testSet.expectedBalance, b)
-			message += fmt.Sprintf("\nFor time: %v", testSet.Time)
-			t.Error(message)
-		}
+		assert.Equal(t, testSet.expectedBalance, b, "For time: %v", testSet.Time)
 	}
 }
 
 func TestBalance_JSONLoop(t *testing.T) {
-	a := GOHMoneyDB.Balance{ID: 3, Balance: newInnerBalanceIgnoreError(time.Now(), 7654, "GBP")}
+	a := GOHMoneyDB.Balance{ID: 3, Balance: newInnerBalanceIgnoreError(time.Now(), 7654, "USD")}
 	jsonBytes, err := json.Marshal(a)
 	if err != nil {
 		t.Fatalf("Error marshalling json for testing: %s", err)
@@ -449,7 +427,7 @@ func TestBalance_JSONLoop(t *testing.T) {
 		Money money.Money
 	}{}
 	err = json.Unmarshal(jsonBytes, &b)
-	fatalIfError(t, err, "Unmarshaling json for testing")
+	common.FatalIfError(t, err, "Unmarshaling json for testing")
 	assert.Equal(t, a.ID, b.ID, "JSON: %s", string(jsonBytes))
 	assert.Equal(t, a.Date(), b.Date)
 	assert.Equal(t, a.Money(), b.Money)

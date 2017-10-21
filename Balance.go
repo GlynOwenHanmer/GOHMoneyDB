@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/GlynOwenHanmer/GOHMoney/balance"
-	"github.com/GlynOwenHanmer/GOHMoney/money"
+	"github.com/glynternet/GOHMoney/balance"
+	"github.com/glynternet/GOHMoney/money"
 )
 
 const (
-	balanceInsertFields  string = "account_id, date, balance, currency"
-	balanceSelectFields  string = "id, date, balance, currency"
-	bBalanceSelectFields string = "b.id, b.date, b.balance, currency"
+	balanceInsertFields  = "account_id, date, balance, currency"
+	balanceSelectFields  = "id, date, balance, currency"
+	bBalanceSelectFields = "b.id, b.date, b.balance, currency"
 )
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.
@@ -85,7 +85,11 @@ func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.Bala
 	}
 	amount := update.Money()
 	floatAmount := float64((&amount).Amount()) / 100.
-	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2 WHERE id = $3 returning `+balanceSelectFields, floatAmount, update.Date(), original.ID)
+	currency, err := amount.Currency()
+	if err != nil {
+		return Balance{}, err
+	}
+	row := db.QueryRow(`UPDATE balances SET balance = $1, date = $2, currency = $3 WHERE id = $4 returning `+balanceSelectFields, floatAmount, update.Date(), currency.Code, original.ID)
 	balance, err := scanRowForBalance(row)
 	return *balance, err
 }
@@ -135,7 +139,7 @@ func scanRowForBalance(row *sql.Row) (*Balance, error) {
 	var amount float64
 	var currency string
 	err := row.Scan(&ID, &date, &amount, &currency)
-	b, _ := newBalance(ID, date, amount, "GBP")
+	b, _ := newBalance(ID, date, amount, currency)
 	if err == sql.ErrNoRows {
 		err = NoBalances
 	}
