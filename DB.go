@@ -10,7 +10,7 @@ import (
 )
 
 // OpenDBConnection returns a connection to a DB using the given connection string along with any errors that occur whilst attempting to open the connection.
-func OpenDBConnection(connectionString string) (*sql.DB, error) {
+func OpenDBConnection(connectionString string) (db *sql.DB, err error) {
 	log.Print("Opening DB connection.")
 	return sql.Open("postgres", connectionString)
 }
@@ -48,11 +48,19 @@ func LoadDBConnectionString(location string) (string, error) {
 	return string(connectionString[0:bytesCount]), err
 }
 
-func close(c io.Closer) {
-	if c == nil {
+func deferredCloseDB(db *sql.DB){
+	if db == nil {
 		log.Printf("Attempted to close db but it was nil.")
 	}
+	log.Print("Closing DB connection.")
+	deferredClose(db)
+}
+
+func deferredClose(c io.Closer) {
+	if c == nil {
+		log.Printf("Attempted to close Closer but it was nil.")
+	}
 	if err := c.Close(); err != nil {
-		log.Printf("Error closing db: %s", err)
+		log.Printf("Error closing Closer: %s", err)
 	}
 }
