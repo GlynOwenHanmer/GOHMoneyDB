@@ -78,7 +78,7 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	dbAccount := GOHMoneyDB.Account(account)
 	startingBalances, err := dbAccount.Balances(db)
 	common.FatalIfErrorf(t, err, "Getting balances for account %+v", dbAccount)
-	invalidBalance := balance.Balance{}
+	invalidBalance := balance.balance{}
 	insertedBalance, err := dbAccount.InsertBalance(db, invalidBalance)
 	if err != balance.ZeroDate {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", balance.ZeroDate, err)
@@ -120,8 +120,8 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 	if insertedBalance.ID != initialLastID+1 {
 		t.Errorf("Expected ID to incremement by 1.\nInitial last ID: %d\nInserted Balance ID: %d", initialLastID, insertedBalance.ID)
 	}
-	if !insertedBalance.Balance.Equal(validBalance) {
-		t.Errorf("Inserted balance does not equal original.\nInserted: %+v\nOriginal: %+v", insertedBalance.Balance, validBalance)
+	if !insertedBalance.balance.Equal(validBalance) {
+		t.Errorf("Inserted balance does not equal original.\nInserted: %+v\nOriginal: %+v", insertedBalance.balance, validBalance)
 	}
 	err = dbAccount.ValidateBalance(db, insertedBalance)
 	common.ErrorIfErrorf(t, err, "Expected inserted balance to be valid against account.\nError: %s\nAccount: %s\nBalance: %s", err, dbAccount, insertedBalance)
@@ -176,11 +176,11 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	}
 	outOfDateRange := GOHMoneyDB.Balance{
 		ID:      account.ID,
-		Balance: newInnerBalanceIgnoreError(time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC), 0, "USD"),
+		balance: newInnerBalanceIgnoreError(time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC), 0, "USD"),
 	}
 	balanceWithWrongOwner := GOHMoneyDB.Balance{
 		ID:      account.ID - 1,
-		Balance: validBalance.Balance,
+		balance: validBalance.balance,
 	}
 	testSets := []struct {
 		account *GOHMoneyDB.Account
@@ -195,7 +195,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 		{
 			account: account,
 			balance: outOfDateRange,
-			error:   account.Account.ValidateBalance(outOfDateRange.Balance),
+			error:   account.Account.ValidateBalance(outOfDateRange.balance),
 		},
 		{
 			account: account,
@@ -211,7 +211,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	}
 }
 
-func newInnerBalanceIgnoreError(t time.Time, a int64, cur string) balance.Balance {
+func newInnerBalanceIgnoreError(t time.Time, a int64, cur string) balance.balance {
 	m, _ := money.New(a, cur)
 	b, _ := balance.New(t, *m)
 	return b
@@ -257,7 +257,7 @@ func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error creating inserting new Balance into DB for testing. Error: %s`, err.Error())
 	}
-	update := balance.Balance{}
+	update := balance.balance{}
 	updatedBalance, err := account.UpdateBalance(db, createdBalance, update)
 	expectedError := errors.New(`Update Balance is not valid: ` + balance.ZeroDate.Error())
 	if err.Error() != expectedError.Error() {
@@ -314,8 +314,8 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 		t.Errorf("Balance ID changed when updating Balance\n\tOriginal: %d\n\tFinal   : %d", createdBalance.ID, updatedBalance.ID)
 	}
 	expectedDate := update.Date().Truncate(time.Hour * 24)
-	if !updatedBalance.Balance.Date().Equal(expectedDate) {
-		t.Errorf("Unexpected Balance date.\n\tExpected: %s\n\tActual  : %s", update.Date(), updatedBalance.Balance.Date())
+	if !updatedBalance.balance.Date().Equal(expectedDate) {
+		t.Errorf("Unexpected Balance date.\n\tExpected: %s\n\tActual  : %s", update.Date(), updatedBalance.balance.Date())
 	}
 	appliedAmount := update.Money()
 	updatedAmount := updatedBalance.Money()
@@ -345,7 +345,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 	expectedBalance := GOHMoneyDB.Balance{}
 	assert.Equal(t, expectedBalance, b)
 
-	balances := [5]balance.Balance{
+	balances := [5]balance.balance{
 		newInnerBalanceIgnoreError(time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC), 0, "GBP"),
 		newInnerBalanceIgnoreError(time.Date(2000, 1, 3, 1, 1, 1, 1, time.UTC), 1, "GBP"),
 		newInnerBalanceIgnoreError(time.Date(2000, 1, 5, 1, 1, 1, 1, time.UTC), 2, "GBP"),
@@ -415,7 +415,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 }
 
 func TestBalance_JSONLoop(t *testing.T) {
-	a := GOHMoneyDB.Balance{ID: 3, Balance: newInnerBalanceIgnoreError(time.Now(), 7654, "USD")}
+	a := GOHMoneyDB.Balance{ID: 3, balance: newInnerBalanceIgnoreError(time.Now(), 7654, "USD")}
 	jsonBytes, err := json.Marshal(a)
 	if err != nil {
 		t.Fatalf("Error marshalling json for testing: %s", err)

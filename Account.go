@@ -70,7 +70,7 @@ func (a Account) ValidateBalance(db *sql.DB, balance Balance) error {
 	if err := a.Validate(db); err != nil {
 		return err
 	}
-	err := a.Account.ValidateBalance(balance.Balance)
+	err := a.Account.ValidateBalance(balance.balance)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func SelectAccounts(db *sql.DB) (*Accounts, error) {
 	if err != nil {
 		return new(Accounts), err
 	}
-	defer close(rows)
+	defer deferredClose(rows)
 	return scanRowsForAccounts(rows)
 }
 
@@ -113,7 +113,7 @@ func SelectAccountsOpen(db *sql.DB) (*Accounts, error) {
 	if err != nil {
 		return new(Accounts), err
 	}
-	defer close(rows)
+	defer deferredClose(rows)
 	return scanRowsForAccounts(rows)
 }
 
@@ -214,7 +214,7 @@ func (a Account) Update(db *sql.DB, update account.Account) (Account, error) {
 		return Account{}, errors.New("Error selecting balances for validation: " + err.Error())
 	}
 	for _, b := range *balances {
-		if err = update.ValidateBalance(b.Balance); err != nil {
+		if err = update.ValidateBalance(b.balance); err != nil {
 			return Account{}, fmt.Errorf("Update would make at least one account balance (id: %d) invalid. Error: %s", b.ID, err)
 		}
 	}

@@ -20,13 +20,13 @@ const (
 
 // Balance holds logic for an Account item that is held within a GOHMoney database.
 type Balance struct {
-	balance.Balance
+	balance.balance
 	ID uint
 }
 
 // Equal returns true if two Balance items are logically identical
 func (b Balance) Equal(ob Balance) bool {
-	if b.ID != ob.ID || !b.Balance.Equal(ob.Balance) {
+	if b.ID != ob.ID || !b.balance.Equal(ob.balance) {
 		return false
 	}
 	return true
@@ -48,12 +48,12 @@ func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
 	if err != nil {
 		return new(Balances), err
 	}
-	defer close(rows)
+	defer deferredClose(rows)
 	return scanRowsForBalances(rows)
 }
 
 // InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
-func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
+func (a Account) InsertBalance(db *sql.DB, b balance.balance) (Balance, error) {
 	if err := a.Account.ValidateBalance(b); err != nil {
 		dbb, _ := newBalance(0, time.Time{}, 0, "")
 		return *dbb, err
@@ -73,7 +73,7 @@ func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
 }
 
 // UpdateBalance updates a Balance entry in a given db for a given account and original Balance, returning any errors that are present with the validitiy of the Account, original Balance or update Balance.
-func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.Balance) (Balance, error) {
+func (a Account) UpdateBalance(db *sql.DB, original Balance, update balance.balance) (Balance, error) {
 	if err := a.ValidateBalance(db, original); err != nil {
 		return Balance{}, err
 	}
@@ -128,7 +128,7 @@ func (b *Balance) UnmarshalJSON(data []byte) (err error) {
 		return err
 	}
 	b.ID = aux.ID
-	b.Balance, err = balance.New(aux.Date, aux.Money)
+	b.balance, err = balance.New(aux.Date, aux.Money)
 	return
 }
 
@@ -161,7 +161,7 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 		if err != nil {
 			return nil, err
 		}
-		var innerB balance.Balance
+		var innerB balance.balance
 		var m *money.Money
 		m, err = moneyIntFromFloat(amount, cur)
 		if err != nil {
@@ -171,7 +171,7 @@ func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
 		if err != nil {
 			return nil, err
 		}
-		*bs = append(*bs, Balance{ID: ID, Balance: innerB})
+		*bs = append(*bs, Balance{ID: ID, balance: innerB})
 	}
 	if err == nil {
 		err = rows.Err()
@@ -187,9 +187,9 @@ func newBalance(ID uint, d time.Time, a float64, cur string) (*Balance, error) {
 	if err != nil {
 		return nil, err
 	}
-	innerB := new(balance.Balance)
+	innerB := new(balance.balance)
 	*innerB, err = balance.New(d, *mon)
-	return &Balance{ID: ID, Balance: *innerB}, err
+	return &Balance{ID: ID, balance: *innerB}, err
 }
 
 func moneyIntFromFloat(f float64, cur string) (*money.Money, error) {
