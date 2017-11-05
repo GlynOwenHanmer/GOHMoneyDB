@@ -1,4 +1,4 @@
-package GOHMoneyDB_test
+package moneypostgres_test
 
 import (
 	"bytes"
@@ -10,10 +10,10 @@ import (
 
 	"encoding/json"
 
-	"github.com/glynternet/GOHMoney/balance"
-	"github.com/glynternet/GOHMoney/common"
-	"github.com/glynternet/GOHMoney/money"
-	"github.com/glynternet/GOHMoneyDB"
+	"github.com/glynternet/go-money/balance"
+	"github.com/glynternet/go-money/common"
+	"github.com/glynternet/go-money/money"
+	"github.com/glynternet/go-moneypostgres"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func Test_BalancesForInvalidAccountId(t *testing.T) {
 	validID := uint(1)
 	db := prepareTestDB(t)
 	defer close(t, db)
-	a, err := GOHMoneyDB.SelectAccountWithID(db, validID)
+	a, err := moneypostgres.SelectAccountWithID(db, validID)
 	if err != nil {
 		t.Errorf("Error selecting account for testings: %s", err)
 	}
@@ -42,7 +42,7 @@ func TestBalancesForValidAccountId(t *testing.T) {
 	validID := uint(1)
 	db := prepareTestDB(t)
 	defer close(t, db)
-	a, err := GOHMoneyDB.SelectAccountWithID(db, validID)
+	a, err := moneypostgres.SelectAccountWithID(db, validID)
 	common.ErrorIfError(t, err, "Selecting accounts for testing")
 	balances, err := a.Balances(db)
 	common.ErrorIfErrorf(t, err, "Getting balances for account %d", validID)
@@ -73,9 +73,9 @@ func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	accountID := uint(1)
 	db := prepareTestDB(t)
 	defer close(t, db)
-	account, err := GOHMoneyDB.SelectAccountWithID(db, accountID)
+	account, err := moneypostgres.SelectAccountWithID(db, accountID)
 	common.ErrorIfError(t, err, "Selecting account")
-	dbAccount := GOHMoneyDB.Account(account)
+	dbAccount := moneypostgres.Account(account)
 	startingBalances, err := dbAccount.Balances(db)
 	common.FatalIfErrorf(t, err, "Getting balances for account %+v", dbAccount)
 	invalidBalance := balance.balance{}
@@ -104,9 +104,9 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
 	initialLastID := getHighestBalanceID(db, t)
-	account, err := GOHMoneyDB.SelectAccountWithID(db, accountID)
+	account, err := moneypostgres.SelectAccountWithID(db, accountID)
 	common.ErrorIfErrorf(t, err, "Error selecting account with ID %d for testing", accountID)
-	dbAccount := GOHMoneyDB.Account(account)
+	dbAccount := moneypostgres.Account(account)
 	startingBalances, err := dbAccount.Balances(db)
 	if err != nil {
 		t.Fatalf("Unable to get balances for testing for account: %s", dbAccount)
@@ -136,7 +136,7 @@ func TestAccount_InsertBalance_ValidBalance(t *testing.T) {
 
 func getHighestBalanceID(db *sql.DB, t *testing.T) uint {
 	initialLastID := uint(0)
-	allAccounts, err := GOHMoneyDB.SelectAccounts(db)
+	allAccounts, err := moneypostgres.SelectAccounts(db)
 	if err != nil {
 		t.Fatalf("Error selecting all Accounts for testing: %s", err.Error())
 	}
@@ -145,7 +145,7 @@ func getHighestBalanceID(db *sql.DB, t *testing.T) uint {
 	}
 	for _, account := range *allAccounts {
 		balances, err := account.Balances(db)
-		if err == GOHMoneyDB.NoBalances {
+		if err == moneypostgres.NoBalances {
 			continue
 		}
 		if err != nil {
@@ -163,7 +163,7 @@ func getHighestBalanceID(db *sql.DB, t *testing.T) uint {
 func TestAccount_ValidateBalance(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
-	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	account, err := moneypostgres.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
@@ -174,17 +174,17 @@ func TestAccount_ValidateBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf(`Error inserting new balance for testing. Error :%s`, err)
 	}
-	outOfDateRange := GOHMoneyDB.Balance{
+	outOfDateRange := moneypostgres.Balance{
 		ID:      account.ID,
 		balance: newInnerBalanceIgnoreError(time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC), 0, "USD"),
 	}
-	balanceWithWrongOwner := GOHMoneyDB.Balance{
+	balanceWithWrongOwner := moneypostgres.Balance{
 		ID:      account.ID - 1,
 		balance: validBalance.balance,
 	}
 	testSets := []struct {
-		account *GOHMoneyDB.Account
-		balance GOHMoneyDB.Balance
+		account *moneypostgres.Account
+		balance moneypostgres.Balance
 		error
 	}{
 		{
@@ -200,7 +200,7 @@ func TestAccount_ValidateBalance(t *testing.T) {
 		{
 			account: account,
 			balance: balanceWithWrongOwner,
-			error:   GOHMoneyDB.InvalidAccountBalanceError{AccountID: account.ID, BalanceID: balanceWithWrongOwner.ID},
+			error:   moneypostgres.InvalidAccountBalanceError{AccountID: account.ID, BalanceID: balanceWithWrongOwner.ID},
 		},
 	}
 	for _, testSet := range testSets {
@@ -220,11 +220,11 @@ func newInnerBalanceIgnoreError(t time.Time, a int64, cur string) balance.balanc
 func Test_UpdateBalance_WrongAccount(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
-	accountA, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	accountA, err := moneypostgres.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
-	accountB, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	accountB, err := moneypostgres.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
@@ -235,11 +235,11 @@ func Test_UpdateBalance_WrongAccount(t *testing.T) {
 	}
 	update := newInnerBalanceIgnoreError(time.Now(), 100, "EUR")
 	updatedBalance, err := accountB.UpdateBalance(db, createdBalanceA, update)
-	expectedError := GOHMoneyDB.InvalidAccountBalanceError{AccountID: accountB.ID, BalanceID: createdBalanceA.ID}
+	expectedError := moneypostgres.InvalidAccountBalanceError{AccountID: accountB.ID, BalanceID: createdBalanceA.ID}
 	if err != expectedError {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
 	}
-	expectedBalance := GOHMoneyDB.Balance{}
+	expectedBalance := moneypostgres.Balance{}
 	if updatedBalance != expectedBalance {
 		t.Errorf("Unexpected Balance.\n\tExpected: %s\n\tActual  : %s", expectedBalance, updatedBalance)
 	}
@@ -248,7 +248,7 @@ func Test_UpdateBalance_WrongAccount(t *testing.T) {
 func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
-	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	account, err := moneypostgres.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
@@ -263,7 +263,7 @@ func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 	if err.Error() != expectedError.Error() {
 		t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedError, err)
 	}
-	expectedBalance := GOHMoneyDB.Balance{}
+	expectedBalance := moneypostgres.Balance{}
 	if updatedBalance != expectedBalance {
 		t.Errorf("Unexpected Balance.\n\tExpected: %s\n\tActual  : %s", expectedBalance, updatedBalance)
 	}
@@ -273,7 +273,7 @@ func Test_UpdateBalance_InvalidUpdate(t *testing.T) {
 func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
-	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	account, err := moneypostgres.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
@@ -295,7 +295,7 @@ func Test_UpdateBalance_InvalidUpdateForAccount(t *testing.T) {
 func Test_UpdateBalance_ValidBalance(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
-	account, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	account, err := moneypostgres.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf(`Error creating new account for testing. Error: %s`, err)
 	}
@@ -331,18 +331,18 @@ func Test_UpdateBalance_ValidBalance(t *testing.T) {
 func Test_AccountBalanceAtDate(t *testing.T) {
 	db := prepareTestDB(t)
 	defer close(t, db)
-	dbAccount, err := GOHMoneyDB.CreateAccount(db, newTestAccount())
+	dbAccount, err := moneypostgres.CreateAccount(db, newTestAccount())
 	if err != nil {
 		t.Fatalf("Unable to create account for testing. Error: %s", err.Error())
 	}
 
 	// 1. no balances exist for account
 	b, err := dbAccount.BalanceAtDate(db, time.Date(3000, 1, 2, 1, 1, 1, 1, time.UTC))
-	expectedError := GOHMoneyDB.NoBalances
+	expectedError := moneypostgres.NoBalances
 	if err != expectedError {
 		t.Errorf("Unexpected error.\nExpected: %s\nActual  : %s", expectedError, err)
 	}
-	expectedBalance := GOHMoneyDB.Balance{}
+	expectedBalance := moneypostgres.Balance{}
 	assert.Equal(t, expectedBalance, b)
 
 	balances := [5]balance.balance{
@@ -353,7 +353,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 		newInnerBalanceIgnoreError(time.Date(2000, 1, 7, 1, 1, 1, 1, time.UTC), 4, "GBP"),
 	}
 
-	var insertedBalances []GOHMoneyDB.Balance
+	var insertedBalances []moneypostgres.Balance
 	for _, balance := range balances {
 		insertedBalance, err := dbAccount.InsertBalance(db, balance)
 		if err != nil {
@@ -369,13 +369,13 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 	testSets := []struct {
 		time.Time
 		error
-		expectedBalance GOHMoneyDB.Balance
+		expectedBalance moneypostgres.Balance
 	}{
 		{
 			// No balances exist before date
 			balances[0].Date().AddDate(-1, 0, 0),
-			GOHMoneyDB.NoBalances,
-			GOHMoneyDB.Balance{},
+			moneypostgres.NoBalances,
+			moneypostgres.Balance{},
 		},
 		{
 			// Balance exists before date
@@ -415,7 +415,7 @@ func Test_AccountBalanceAtDate(t *testing.T) {
 }
 
 func TestBalance_JSONLoop(t *testing.T) {
-	a := GOHMoneyDB.Balance{ID: 3, balance: newInnerBalanceIgnoreError(time.Now(), 7654, "USD")}
+	a := moneypostgres.Balance{ID: 3, balance: newInnerBalanceIgnoreError(time.Now(), 7654, "USD")}
 	jsonBytes, err := json.Marshal(a)
 	if err != nil {
 		t.Fatalf("Error marshalling json for testing: %s", err)
@@ -432,7 +432,7 @@ func TestBalance_JSONLoop(t *testing.T) {
 	assert.Equal(t, a.Date(), b.Date)
 	assert.Equal(t, a.Money(), b.Money)
 
-	var c GOHMoneyDB.Balance
+	var c moneypostgres.Balance
 	if err := json.Unmarshal(jsonBytes, &c); err != nil {
 		t.Fatalf("Error unmarshaling bytes into Balance: %s\njson: %s", err, jsonBytes)
 	}

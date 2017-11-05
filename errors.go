@@ -1,4 +1,4 @@
-package GOHMoneyDB
+package moneypostgres
 
 import (
 	"errors"
