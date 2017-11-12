@@ -1,30 +1,31 @@
-package moneypostgres_test
+package storage_test
 
 import (
-	"testing"
-	"github.com/glynternet/go-money/common"
 	"database/sql"
-	"os/user"
-	"github.com/glynternet/go-moneypostgres"
-	"github.com/stretchr/testify/assert"
 	"io"
+	"os/user"
 	"strings"
+	"testing"
+
+	"github.com/glynternet/go-accounting-storage"
+	"github.com/glynternet/go-money/common"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewConnectionString(t *testing.T) {
-	c, err := moneypostgres.NewConnectionString("", "name", "", "")
+	c, err := storage.NewConnectionString("", "name", "", "")
 	assert.Nil(t, err)
 	assert.NotNil(t, c)
 	assert.Equal(t, "user=name", c)
 
-	c, err = moneypostgres.NewConnectionString("localhost", "user", "dbname", "disable")
+	c, err = storage.NewConnectionString("localhost", "user", "dbname", "disable")
 	assert.Nil(t, err)
 	assert.NotNil(t, c)
 	expected := map[string]string{
-		"host":"localhost",
-		"user":"user",
-		"dbname":"dbname",
-		"sslmode":"disable",
+		"host":    "localhost",
+		"user":    "user",
+		"dbname":  "dbname",
+		"sslmode": "disable",
 	}
 	ss := strings.Split(c, ` `)
 	assert.Len(t, ss, len(expected))
@@ -51,13 +52,13 @@ func Test_prepareTestDB(t *testing.T) {
 }
 
 func TestCreateAndDeleteDB(t *testing.T) {
-	cs, err := moneypostgres.NewConnectionString("172.17.0.1", "glynhanmer", "", "disable")
+	cs, err := storage.NewConnectionString("172.17.0.1", "glynhanmer", "", "disable")
 	assert.Nil(t, err)
-	db, err := moneypostgres.OpenDBConnection(cs)
+	db, err := storage.OpenDBConnection(cs)
 	assert.Nil(t, err)
-	err = moneypostgres.CreateDB(db, "moneytest", "glynhanmer")
+	err = storage.CreateDB(db, "moneytest", "glynhanmer")
 	assert.Nil(t, err)
-	err = moneypostgres.DeleteDB(db, "moneytest")
+	err = storage.DeleteDB(db, "moneytest")
 }
 
 //todo prepareTestDB should be given a base name for a db, which it should append a timestamp onto.
@@ -68,21 +69,21 @@ func prepareTestDB(t *testing.T) *sql.DB {
 	if len(usr.HomeDir) < 1 {
 		t.Fatalf("User's home directory is zero length")
 	}
-	connectionString, err := moneypostgres.LoadDBConnectionString(usr.HomeDir + `/.gohmoney/.gohmoneydbtestconnectionstring`)
+	connectionString, err := storage.LoadDBConnectionString(usr.HomeDir + `/.gohmoney/.gohmoneydbtestconnectionstring`)
 	common.FatalIfError(t, err, "Error loading DB connection string")
-	db, err := moneypostgres.OpenDBConnection(connectionString)
+	db, err := storage.OpenDBConnection(connectionString)
 	common.FatalIfError(t, err, "Error opening ")
 	return db
 }
 
 func Test_isAvailable(t *testing.T) {
-	unavailableDb, _ := moneypostgres.OpenDBConnection("INVALID CONNECTION STRING")
-	if moneypostgres.DbIsAvailable(unavailableDb) {
+	unavailableDb, _ := storage.OpenDBConnection("INVALID CONNECTION STRING")
+	if storage.DbIsAvailable(unavailableDb) {
 		t.Error("isAvailable returned true when it should have been false.")
 	}
 
 	availableDb := prepareTestDB(t)
-	if !moneypostgres.DbIsAvailable(availableDb) {
+	if !storage.DbIsAvailable(availableDb) {
 		t.Error("isAvailable returned false when it should have been true.")
 	}
 	err := availableDb.Close()
@@ -90,10 +91,10 @@ func Test_isAvailable(t *testing.T) {
 }
 
 func TestLoadDBConnectionString(t *testing.T) {
-	if _, err := moneypostgres.LoadDBConnectionString(""); err == nil {
+	if _, err := storage.LoadDBConnectionString(""); err == nil {
 		t.Errorf("Expected error but got none.")
 	}
-	if _, err := moneypostgres.LoadDBConnectionString("asjdhgaksd"); err == nil {
+	if _, err := storage.LoadDBConnectionString("asjdhgaksd"); err == nil {
 		t.Errorf("Expected error but got none.")
 	}
 }

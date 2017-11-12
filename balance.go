@@ -1,13 +1,13 @@
-package moneypostgres
+package storage
 
 import (
-	"github.com/glynternet/go-money/balance"
+	"github.com/glynternet/go-accounting/balance"
 )
 
 const (
-	//balanceInsertFields  = "account_id, date, balance, currency"
-	//balanceSelectFields  = "id, date, balance, currency"
-	//bBalanceSelectFields = "b.id, b.date, b.balance, currency"
+//balanceInsertFields  = "account_id, date, balance, currency"
+//balanceSelectFields  = "id, date, balance, currency"
+//bBalanceSelectFields = "b.id, b.date, b.balance, currency"
 )
 
 // Balance holds logic for an Account item that is held within a go-money database.
@@ -44,7 +44,7 @@ type Balances []Balance
 //	return scanRowsForBalances(rows)
 //}
 
- //InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
+//InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
 //func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
 //	if err := a.Account.ValidateBalance(b); err != nil {
 //		dbb, _ := newBalance(0, time.Time{}, 0, "")

@@ -1,27 +1,27 @@
-package moneypostgres
+package storage
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"bytes"
 	"strings"
 )
 
 func NewConnectionString(host, user, dbname, sslmode string) (s string, err error) {
 	kvs := map[string]string{
-		"host":host,
-		"user":user,
-		"dbname":dbname,
-		"sslmode":sslmode,
+		"host":    host,
+		"user":    user,
+		"dbname":  dbname,
+		"sslmode": sslmode,
 	}
 	cs := new(bytes.Buffer)
 	for k, v := range kvs {
 		if len(v) > 0 {
-			_, err = fmt.Fprintf(cs, "%s=%s ", k,v)
+			_, err = fmt.Fprintf(cs, "%s=%s ", k, v)
 			if err != nil {
 				return
 			}
@@ -99,7 +99,7 @@ func LoadDBConnectionString(location string) (string, error) {
 	return string(connectionString[0:bytesCount]), err
 }
 
-func deferredCloseDB(db *sql.DB){
+func deferredCloseDB(db *sql.DB) {
 	if db == nil {
 		log.Printf("Attempted to close db but it was nil.")
 	}

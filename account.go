@@ -1,7 +1,7 @@
-package moneypostgres
+package storage
 
 import (
-	"github.com/glynternet/go-money/account"
+	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-time"
 )
 

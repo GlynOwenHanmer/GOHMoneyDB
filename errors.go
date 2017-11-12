@@ -1,4 +1,4 @@
-package moneypostgres
+package storage
 
 import (
 	"errors"
