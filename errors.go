@@ -26,7 +26,7 @@ const (
 	NoBalances = BalancesError("No balances exist.")
 )
 
-// InvalidAccountBalanceError is an error type used to describe when a mistmatch of logical Account and Balance occurs.
+// InvalidAccountBalanceError is an error type used to describe when a mismatch of logical Account and Balance occurs.
 type InvalidAccountBalanceError struct {
 	AccountID, BalanceID uint
 }
