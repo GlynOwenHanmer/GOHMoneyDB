@@ -1,5 +1,6 @@
 package storage
 
+// Storage is something that can be used to store certain go-accounting types
 type Storage interface {
 	Available() bool
 	Close() error
