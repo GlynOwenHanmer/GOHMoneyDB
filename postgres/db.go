@@ -18,7 +18,7 @@ func New(connectionString string) (s *storage, err error) {
 	if err != nil {
 		return
 	}
-	return &storage{db:db}, nil
+	return &storage{db: db}, nil
 }
 
 type storage struct {
@@ -50,7 +50,7 @@ type failSafeWriter struct {
 	error
 }
 
-func(w *failSafeWriter) writef(format string, args ...interface{}) {
+func (w *failSafeWriter) writef(format string, args ...interface{}) {
 	if w.error != nil {
 		return
 	}
@@ -69,7 +69,7 @@ func CreateStorage(connectionString, name, owner string) error {
 	// returned to do with the use of $ signs.
 	// So I've reverted to plain old forming a query string manually.
 	q := new(bytes.Buffer)
-	w := failSafeWriter{Writer:q}
+	w := failSafeWriter{Writer: q}
 	w.writef("CREATE DATABASE %s ", name)
 	w.writef("WITH OWNER = %s ", owner)
 	w.writef("ENCODING = 'UTF8' TABLESPACE = pg_default LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8' CONNECTION LIMIT = 10;")
@@ -93,12 +93,13 @@ func DeleteStorage(connectionString, name string) error {
 	if err != nil {
 		return err
 	}
+	defer deferredClose(db)
 	_, err = db.Exec(`DROP DATABASE ` + name)
 	return err
 }
 
 // Available returns true if the Storage is available
-func (s *storage)Available() bool {
+func (s *storage) Available() bool {
 	return s.db.Ping() == nil // Ping() returns an error if db  is unavailable
 }
 
