@@ -11,16 +11,16 @@ import (
 )
 
 // New returns a connection to a postgres DB using the given connection string along with any errors that occur whilst attempting to open the connection.
-func New(connectionString string) (s *storage, err error) {
+func New(connectionString string) (s *postgres, err error) {
 	var db *sql.DB
 	db, err = sql.Open("postgres", connectionString)
 	if err != nil {
 		return
 	}
-	return &storage{db: db}, nil
+	return &postgres{db: db}, nil
 }
 
-type storage struct {
+type postgres struct {
 	db *sql.DB
 }
 
@@ -98,11 +98,11 @@ func DeleteStorage(connectionString, name string) error {
 }
 
 // Available returns true if the Storage is available
-func (s *storage) Available() bool {
+func (s *postgres) Available() bool {
 	return s.db.Ping() == nil // Ping() returns an error if db  is unavailable
 }
 
-func (s storage) Close() error {
+func (s postgres) Close() error {
 	return s.db.Close()
 }
 

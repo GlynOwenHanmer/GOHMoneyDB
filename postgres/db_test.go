@@ -13,6 +13,7 @@ import (
 
 const (
 	host       = "localhost"
+	realDBName = "money"
 	testDBName = "moneytest"
 	user       = "glynhanmer"
 	ssl        = "disable"
@@ -48,12 +49,12 @@ func TestNewConnectionString(t *testing.T) {
 	assert.Len(t, expected, 0)
 }
 
-func TestCreateStorage_InvalidParamaters(t *testing.T){
+func TestCreateStorage_InvalidParamaters(t *testing.T) {
 	assert.NotNil(t, postgres.CreateStorage("cs", "", "owner"), "expected error for empty storage name")
 	assert.NotNil(t, postgres.CreateStorage("cs", "name", ""), "expected error for empty storage owner")
 }
 
-func TestDeleteStorage_InvalidParamaters(t *testing.T){
+func TestDeleteStorage_InvalidParamaters(t *testing.T) {
 	assert.NotNil(t, postgres.DeleteStorage("cs", ""), "expected error for empty storage name")
 }
 

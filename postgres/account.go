@@ -1,13 +1,32 @@
-package storage
+package postgres
 
 import (
+	"database/sql"
+	"io"
+	"log"
+	"time"
+
+	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/account"
+	"github.com/glynternet/go-money/currency"
+	"github.com/lib/pq"
 )
 
-// const (
-// 	insertFields = "name, date_opened, date_closed"
-// 	selectFields = "id, name, date_opened, date_closed, deleted_at"
-// )
+const (
+	// insertFields = "name, date_opened, date_closed"
+	selectFields = "id, name, date_opened, date_closed, deleted_at"
+)
+
+// SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors occured whilst attempting to retrieve the Accounts.
+func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
+	queryString := "SELECT " + selectFields + " FROM accounts WHERE deleted_at IS NULL ORDER BY id ASC;"
+	rows, err := pg.db.Query(queryString)
+	if err != nil {
+		return nil, err
+	}
+	defer nonReturningClose(rows)
+	return scanRowsForAccounts(rows)
+}
 
 //accountJSONHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
 //type accountJSONHelper struct {
@@ -45,9 +64,6 @@ import (
 //	return
 //}
 
-// Accounts holds multiple Account items.
-type Accounts []Account
-
 // ValidateBalance validates a Balance against an Account and returns any errors that are encountered along the way.
 // ValidateBalance will return any error that is present with the Balance itself, the Balance's Date in reference to the Account's TimeRange and also check that the Account is the valid owner of the Balance.
 //func (a Account) ValidateBalance(db *sql.DB, balance Balance) error {
@@ -79,16 +95,6 @@ type Accounts []Account
 //	}
 //}
 //
-//SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors occured whilst attempting to retrieve the Accounts.
-//func SelectAccounts(db *sql.DB) (*Accounts, error) {
-//	queryString := "SELECT " + selectFields + " FROM accounts WHERE deleted_at IS NULL ORDER BY id ASC;"
-//	rows, err := db.Query(queryString)
-//	if err != nil {
-//		return new(Accounts), err
-//	}
-//	defer deferredClose(rows)
-//	return scanRowsForAccounts(rows)
-//}
 //
 // SelectAccountsOpen returns an Accounts item holding all Account entries within the given database that are open along with any errors occured whilst attempting to retrieve the Accounts.
 //func SelectAccountsOpen(db *sql.DB) (*Accounts, error) {
@@ -141,35 +147,42 @@ type Accounts []Account
 //}
 
 // scanRowsForAccounts scans an sql.Rows object for go-moneypostgres.Accounts objects and returns then along with any error that occurs whilst attempting to scan.
-//func scanRowsForAccounts(rows *sql.Rows) (*Accounts, error) {
-//	openAccounts := Accounts{}
-//	for rows.Next() {
-//		var id uint
-//		var name, currency string
-//		var start time.Time
-//		var end, deletedAt pq.NullTime
-//		err := rows.Scan(&id, &name, &currency, &start, &end, &deletedAt)
-//		if err != nil {
-//			return nil, err
-//		}
-//		c, err := currency2.NewCode(currency)
-//		if err != nil {
-//			return nil, err
-//		}
-//		innerAccount, err := account.New(name, *c, start)
-//		if err != nil {
-//			return nil, err
-//		}
-//		if end.Valid {
-//			err = account.CloseTime(end.Time)(innerAccount)
-//			if err != nil {
-//				return nil, err
-//			}
-//		}
-//		openAccounts = append(openAccounts, Account{ID: id, Account: innerAccount, deletedAt: gohtime.NullTime(deletedAt)})
-//	}
-//	return &openAccounts, rows.Err()
-//}
+func scanRowsForAccounts(rows *sql.Rows) (*storage.Accounts, error) {
+	var openAccounts storage.Accounts
+	for rows.Next() {
+		var id uint
+		var name string
+		var start time.Time
+		var end, deletedAt pq.NullTime
+		err := rows.Scan(&id, &name, &start, &end, &deletedAt)
+		if err != nil {
+			return nil, err
+		}
+		c, err := currency.NewCode("GBP")
+		if err != nil {
+			return nil, err
+		}
+		innerAccount, err := account.New(name, *c, start)
+		if err != nil {
+			return nil, err
+		}
+		if end.Valid {
+			err = account.CloseTime(end.Time)(innerAccount)
+			if err != nil {
+				return nil, err
+			}
+		}
+		a := &storage.Account{ID: id, Account: *innerAccount}
+		if deletedAt.Valid {
+			err := storage.DeletedAt(deletedAt.Time)(a)
+			if err != nil {
+				return nil, err
+			}
+		}
+		openAccounts = append(openAccounts, *a)
+	}
+	return &openAccounts, rows.Err()
+}
 
 // scanRowForAccount scans a single sql.Row for a Account object and returns any error occurring along the way.
 // If the account exists but has been marked as deleted, an ErrAccountDeleted error will be returned along with the account.
@@ -251,18 +264,13 @@ type Accounts []Account
 //	}
 //	return err
 //}
-//
-// Equal return true if two Accounts are identical.
-//func (a Account) Equal(b Account) (bool, error) {
-//	if a.ID != b.ID {
-//		return false, nil
-//	}
-//	if !a.Account.Equal(b.Account) {
-//		return false, nil
-//	}
-//	if !a.deletedAt.Equal(b.deletedAt) {
-//		return false, errors.New("accounts are equal but one has been deleted")
-//	}
-//	return true, nil
-//}
-///
+
+func nonReturningClose(c io.Closer) {
+	if c == nil {
+		log.Printf("Attempted to close Closer but it was nil.")
+		return
+	}
+	if err := c.Close(); err != nil {
+		log.Printf("Error closing postgres: %v", err)
+	}
+}

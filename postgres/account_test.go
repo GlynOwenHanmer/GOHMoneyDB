@@ -1,84 +1,24 @@
-package moneypostgres_test
+package postgres_test
 
 import (
-	"bytes"
-	"database/sql"
-	"encoding/json"
-	"fmt"
 	"testing"
-	"time"
 
-	"github.com/glynternet/go-money/account"
+	"bytes"
+	"fmt"
+
+	"github.com/glynternet/go-accounting-storage"
+	"github.com/glynternet/go-accounting-storage/postgres"
+	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-money/common"
-	"github.com/glynternet/go-moneypostgres"
-	gohtime "github.com/glynternet/go-time"
-	"github.com/stretchr/testify/assert"
 )
 
-func Test_CreateAccount(t *testing.T) {
-	now := time.Now()
-	testSets := []struct {
-		name                 string
-		start, expectedStart time.Time
-		end, expectedEnd     gohtime.NullTime
-		error
-	}{
-		{
-			name:  "TEST_ACCOUNT",
-			start: now,
-			end: gohtime.NullTime{
-				Valid: true,
-				Time:  now.AddDate(1, 0, 0),
-			},
-			error: nil,
-		},
-		{
-			name:  "TEST_ACCOUNT",
-			start: now,
-			end:   gohtime.NullTime{Valid: false},
-			error: nil,
-		},
-		{
-			name:  "Account With'Apostrophe",
-			start: now,
-			end:   gohtime.NullTime{Valid: false},
-			error: nil,
-		},
-	}
-	db := prepareTestDB(t)
-	defer close(t, db)
-	for _, testSet := range testSets {
-		newAccount, err := account.New(testSet.name, testSet.start, testSet.end)
-		common.FatalIfError(t, err, "Error creating new account for testing")
-		actualCreatedAccount, err := moneypostgres.CreateAccount(db, newAccount)
-		if testSet.error == nil && err != nil || testSet.error != nil && err == nil {
-			t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
-		}
-		if _, testSetErrIsNewAccountFieldError := testSet.error.(account.FieldError); testSetErrIsNewAccountFieldError {
-			if _, actualErrorIsNewAccountFieldError := err.(account.FieldError); !actualErrorIsNewAccountFieldError {
-				t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
-			}
-		}
-		expectedAccount, err := account.New(
-			testSet.name,
-			testSet.start.Truncate(24*time.Hour),
-			gohtime.NullTime{
-				Valid: testSet.end.Valid,
-				Time:  testSet.end.Time.Truncate(24 * time.Hour),
-			},
-		)
-		common.FatalIfError(t, err, "Error creating account for testing")
-		if !actualCreatedAccount.Account.Equal(expectedAccount) {
-			t.Errorf("Unexpected account:\nExpected: %+v\nActual  : %+v", expectedAccount, actualCreatedAccount)
-		}
-		//todo Check that id has incremented by one?
-	}
-}
-
 func Test_SelectAccounts(t *testing.T) {
-	db := prepareTestDB(t)
-	defer close(t, db)
-	accounts, err := moneypostgres.SelectAccounts(db)
+	cs, err := postgres.NewConnectionString(host, user, realDBName, ssl)
+	common.FatalIfError(t, err, "creating connection string")
+	store, err := postgres.New(cs)
+	common.FatalIfError(t, err, "connecting to postgres store")
+	defer nonReturningCloseStorage(t, store)
+	accounts, err := store.SelectAccounts()
 	if err != nil {
 		if _, ok := err.(account.FieldError); !ok {
 			t.Errorf("Unexpected error type when selecting accounts. Error: %s", err.Error())
@@ -93,66 +33,126 @@ func Test_SelectAccounts(t *testing.T) {
 	checkAccountsSortedByIdAscending(*accounts, t)
 }
 
-func Test_SelectAccountsOpen(t *testing.T) {
-	db := prepareTestDB(t)
-	defer close(t, db)
-	openAccounts, err := moneypostgres.SelectAccountsOpen(db)
-	common.FatalIfError(t, err, "Error running SelectAccountsOpen method")
-	if len(*openAccounts) == 0 {
-		t.Fatalf("No accounts were returned.")
-	}
-	for _, account := range *openAccounts {
-		if !account.IsOpen() {
-			t.Errorf("SelectAccountsOpen returned closed account: %s", account)
-		}
-	}
-	checkAccountsSortedByIdAscending(*openAccounts, t)
-}
+// func Test_CreateAccount(t *testing.T) {
+// 	now := time.Now()
+// 	testSets := []struct {
+// 		name                 string
+// 		start, expectedStart time.Time
+// 		end, expectedEnd     gohtime.NullTime
+// 		error
+// 	}{
+// 		{
+// 			name:  "TEST_ACCOUNT",
+// 			start: now,
+// 			end: gohtime.NullTime{
+// 				Valid: true,
+// 				Time:  now.AddDate(1, 0, 0),
+// 			},
+// 			error: nil,
+// 		},
+// 		{
+// 			name:  "TEST_ACCOUNT",
+// 			start: now,
+// 			end:   gohtime.NullTime{Valid: false},
+// 			error: nil,
+// 		},
+// 		{
+// 			name:  "Account With'Apostrophe",
+// 			start: now,
+// 			end:   gohtime.NullTime{Valid: false},
+// 			error: nil,
+// 		},
+// 	}
+// 	db := prepareTestDB(t)
+// 	defer close(t, db)
+// 	for _, testSet := range testSets {
+// 		newAccount, err := account.New(testSet.name, testSet.start, testSet.end)
+// 		common.FatalIfError(t, err, "Error creating new account for testing")
+// 		actualCreatedAccount, err := moneypostgres.CreateAccount(db, newAccount)
+// 		if testSet.error == nil && err != nil || testSet.error != nil && err == nil {
+// 			t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
+// 		}
+// 		if _, testSetErrIsNewAccountFieldError := testSet.error.(account.FieldError); testSetErrIsNewAccountFieldError {
+// 			if _, actualErrorIsNewAccountFieldError := err.(account.FieldError); !actualErrorIsNewAccountFieldError {
+// 				t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
+// 			}
+// 		}
+// 		expectedAccount, err := account.New(
+// 			testSet.name,
+// 			testSet.start.Truncate(24*time.Hour),
+// 			gohtime.NullTime{
+// 				Valid: testSet.end.Valid,
+// 				Time:  testSet.end.Time.Truncate(24 * time.Hour),
+// 			},
+// 		)
+// 		common.FatalIfError(t, err, "Error creating account for testing")
+// 		if !actualCreatedAccount.Account.Equal(expectedAccount) {
+// 			t.Errorf("Unexpected account:\nExpected: %+v\nActual  : %+v", expectedAccount, actualCreatedAccount)
+// 		}
+// 		//todo Check that id has incremented by one?
+// 	}
+// }
 
-func Test_SelectAccountWithId(t *testing.T) {
-	tests := []struct {
-		id            uint
-		expectedError error
-		name          string
-	}{
-		{
-			id:            0,
-			expectedError: moneypostgres.NoAccountWithIDError(0),
-		},
-		{
-			// Max for postgres smallint value
-			id:            32767,
-			expectedError: moneypostgres.NoAccountWithIDError(32767),
-		},
-		{
-			id:            10,
-			expectedError: nil,
-			name:          "Ikaros",
-		},
-		{
-			id:            20,
-			expectedError: nil,
-			name:          "Amsterdam",
-		},
-	}
-	db := prepareTestDB(t)
-	defer close(t, db)
-	for _, test := range tests {
-		account, err := moneypostgres.SelectAccountWithID(db, test.id)
-		if test.expectedError != err {
-			t.Errorf("Unexpected errors\nExpected: %v\nActual  : %v", test.expectedError, err)
-		}
-		if _, noAccount := err.(moneypostgres.NoAccountWithIDError); noAccount {
-			continue
-		}
-		if test.id != account.ID {
-			t.Errorf("Unexpected Account ID\nExpected: %d\nActual  : %d", test.id, account.ID)
-		}
-		if test.name != account.Name {
-			t.Errorf("Unexpected Account name\nExpected: %s\nActual  : %s", test.name, account.Name)
-		}
-	}
-}
+// func Test_SelectAccountsOpen(t *testing.T) {
+// 	db := prepareTestDB(t)
+// 	defer close(t, db)
+// 	openAccounts, err := moneypostgres.SelectAccountsOpen(db)
+// 	common.FatalIfError(t, err, "Error running SelectAccountsOpen method")
+// 	if len(*openAccounts) == 0 {
+// 		t.Fatalf("No accounts were returned.")
+// 	}
+// 	for _, account := range *openAccounts {
+// 		if !account.IsOpen() {
+// 			t.Errorf("SelectAccountsOpen returned closed account: %s", account)
+// 		}
+// 	}
+// 	checkAccountsSortedByIdAscending(*openAccounts, t)
+// }
+
+// func Test_SelectAccountWithId(t *testing.T) {
+// 	tests := []struct {
+// 		id            uint
+// 		expectedError error
+// 		name          string
+// 	}{
+// 		{
+// 			id:            0,
+// 			expectedError: moneypostgres.NoAccountWithIDError(0),
+// 		},
+// 		{
+// 			// Max for postgres smallint value
+// 			id:            32767,
+// 			expectedError: moneypostgres.NoAccountWithIDError(32767),
+// 		},
+// 		{
+// 			id:            10,
+// 			expectedError: nil,
+// 			name:          "Ikaros",
+// 		},
+// 		{
+// 			id:            20,
+// 			expectedError: nil,
+// 			name:          "Amsterdam",
+// 		},
+// 	}
+// 	db := prepareTestDB(t)
+// 	defer close(t, db)
+// 	for _, test := range tests {
+// 		account, err := moneypostgres.SelectAccountWithID(db, test.id)
+// 		if test.expectedError != err {
+// 			t.Errorf("Unexpected errors\nExpected: %v\nActual  : %v", test.expectedError, err)
+// 		}
+// 		if _, noAccount := err.(moneypostgres.NoAccountWithIDError); noAccount {
+// 			continue
+// 		}
+// 		if test.id != account.ID {
+// 			t.Errorf("Unexpected Account ID\nExpected: %d\nActual  : %d", test.id, account.ID)
+// 		}
+// 		if test.name != account.Name {
+// 			t.Errorf("Unexpected Account name\nExpected: %s\nActual  : %s", test.name, account.Name)
+// 		}
+// 	}
+// }
 
 //func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
 //	db := prepareTestDB(t)
@@ -160,25 +160,25 @@ func Test_SelectAccountWithId(t *testing.T) {
 //	account, err := moneypostgres.CreateAccount(db, newTestAccount())
 //	common.FatalIfError(t, err, "Error inserting account for testing")
 //	 Account with no Balances
-	//b, err := account.SelectBalanceWithID(db, 10)
-	//expectedErr := moneypostgres.NoBalances
-	//if err != expectedErr {
-	//	t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
-	//	t.Logf("Selected balance: %v", b)
-	//}
-	//
-	//innerBalance := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 10), 10, "GBP")
-	//validBalance, err := account.InsertBalance(db, innerBalance)
-	//common.FatalIfError(t, err, "Error occurred whilst inserting Balance for testing")
-	//if validBalance.ID < 1 {
-	//	t.Fatalf("Inserted balance returned balance of less than 1 so cannot be subtracted from to make invalid uint Balance ID")
-	//}
-	//invalidBalanceId := validBalance.ID - 1
-	// Account with Balances
-	//_, err = account.SelectBalanceWithID(db, invalidBalanceId)
-	//if err != expectedErr {
-	//	t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
-	//}
+//b, err := account.SelectBalanceWithID(db, 10)
+//expectedErr := moneypostgres.NoBalances
+//if err != expectedErr {
+//	t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
+//	t.Logf("Selected balance: %v", b)
+//}
+//
+//innerBalance := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 10), 10, "GBP")
+//validBalance, err := account.InsertBalance(db, innerBalance)
+//common.FatalIfError(t, err, "Error occurred whilst inserting Balance for testing")
+//if validBalance.ID < 1 {
+//	t.Fatalf("Inserted balance returned balance of less than 1 so cannot be subtracted from to make invalid uint Balance ID")
+//}
+//invalidBalanceId := validBalance.ID - 1
+// Account with Balances
+//_, err = account.SelectBalanceWithID(db, invalidBalanceId)
+//if err != expectedErr {
+//	t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
+//}
 //}
 //
 //func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
@@ -198,20 +198,22 @@ func Test_SelectAccountWithId(t *testing.T) {
 //	}
 //}
 //
-//func checkAccountsSortedByIdAscending(accounts moneypostgres.Accounts, t *testing.T) {
-//	for i := 0; i+1 < len(accounts); i++ {
-//		account := accounts[i]
-//		nextAccount := accounts[i+1]
-//		switch {
-//		case account.ID > nextAccount.ID:
-//			var message bytes.Buffer
-//			fmt.Fprintf(&message, "Accounts not returned sorted by ID. ID %d appears before %d.\n", account.ID, nextAccount.ID)
-//			fmt.Fprintf(&message, "accounts[%d]: %s", i, account)
-//			fmt.Fprintf(&message, "accounts[%d]: %s", i+1, nextAccount)
-//			t.Errorf(message.String())
-//		}
-//	}
-//}
+
+func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
+	for i := 0; i+1 < len(accounts); i++ {
+		account := accounts[i]
+		nextAccount := accounts[i+1]
+		switch {
+		case account.ID > nextAccount.ID:
+			var message bytes.Buffer
+			fmt.Fprintf(&message, "Accounts not returned sorted by ID. ID %d appears before %d.\n", account.ID, nextAccount.ID)
+			fmt.Fprintf(&message, "accounts[%d]: %s", i, account)
+			fmt.Fprintf(&message, "accounts[%d]: %s", i+1, nextAccount)
+			t.Errorf(message.String())
+		}
+	}
+}
+
 //
 //func TestAccount_UpdateAccount(t *testing.T) {
 //	now := time.Now()
@@ -333,9 +335,9 @@ func Test_SelectAccountWithId(t *testing.T) {
 //			t.Errorf("Unexpected account.\n\tExpected: %+v\n\tActuall  : %+v", original, final)
 //			logBytes(t)
 //			 FailNow here as logging the bytes for each loop iteration can cause an extremely long output.
-			//t.FailNow()
-		//}
-	//}
+//t.FailNow()
+//}
+//}
 //}
 //
 //func TestAccount_Validate(t *testing.T) {
@@ -411,3 +413,13 @@ func Test_SelectAccountWithId(t *testing.T) {
 //	common.FatalIfError(t, err, "Error creating account for testing")
 //	return *account
 //}
+
+func nonReturningCloseStorage(t *testing.T, s storage.Storage) {
+	if s == nil {
+		t.Errorf("Attempted to close Storage but it was nil.")
+		return
+	}
+	if err := s.Close(); err != nil {
+		t.Errorf("Error closing Storage: %v", err)
+	}
+}
