@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -80,7 +79,7 @@ func CreateStorage(connectionString, name, owner string) error {
 	if err != nil {
 		return err
 	}
-	defer deferredClose(db)
+	defer nonReturningCloseDB(db)
 	_, err = db.Exec(q.String())
 	return err
 }
@@ -93,7 +92,7 @@ func DeleteStorage(connectionString, name string) error {
 	if err != nil {
 		return err
 	}
-	defer deferredClose(db)
+	defer nonReturningCloseDB(db)
 	_, err = db.Exec(`DROP DATABASE ` + name)
 	return err
 }
@@ -103,50 +102,15 @@ func (s *storage) Available() bool {
 	return s.db.Ping() == nil // Ping() returns an error if db  is unavailable
 }
 
-// LoadDBConnectionString loads the connection string to be used when connecting to the database.
-// LoadDBConnectionString will return the connection string and an error description if there is one.
-func LoadDBConnectionString(location string) (string, error) {
-	if len(location) < 1 {
-		return ``, errors.New("no connection string file location given")
-	}
-	file, err := os.Open(location)
-	if err != nil {
-		return ``, err
-	}
-	stat, err := file.Stat()
-	if err != nil {
-		return ``, err
-	}
-	maxConnectionString := int64(200)
-	fileSize := stat.Size()
-	if fileSize > maxConnectionString {
-		message := fmt.Sprintf("Connection string file (%s) is too large. Max: %d, Length: %d", location, maxConnectionString, fileSize)
-		return ``, errors.New(message)
-	}
-	connectionString := make([]byte, maxConnectionString)
-	bytesCount, err := file.Read(connectionString)
-	if err != nil && err != io.EOF {
-		return ``, err
-	}
-	return string(connectionString[0:bytesCount]), err
-}
-
 func (s storage) Close() error {
 	return s.db.Close()
 }
 
-func deferredCloseDB(s storage) {
-	if s.db == nil {
+func nonReturningCloseDB(db *sql.DB) {
+	if db == nil {
 		log.Printf("Attempted to close db but it was nil.")
 	}
-	deferredClose(s)
-}
-
-func deferredClose(c io.Closer) {
-	if c == nil {
-		log.Printf("Attempted to close Closer but it was nil.")
-	}
-	if err := c.Close(); err != nil {
+	if err := db.Close(); err != nil {
 		log.Printf("Error closing Closer: %s", err)
 	}
 }

@@ -48,6 +48,15 @@ func TestNewConnectionString(t *testing.T) {
 	assert.Len(t, expected, 0)
 }
 
+func TestCreateStorage_InvalidParamaters(t *testing.T){
+	assert.NotNil(t, postgres.CreateStorage("cs", "", "owner"), "expected error for empty storage name")
+	assert.NotNil(t, postgres.CreateStorage("cs", "name", ""), "expected error for empty storage owner")
+}
+
+func TestDeleteStorage_InvalidParamaters(t *testing.T){
+	assert.NotNil(t, postgres.DeleteStorage("cs", ""), "expected error for empty storage name")
+}
+
 func TestCreateAndDeleteStorage(t *testing.T) {
 	cs := adminConnectionString(t)
 	err := postgres.CreateStorage(cs, testDBName, user)
@@ -93,15 +102,6 @@ func Test_isAvailable(t *testing.T) {
 	assert.True(t, availableDb.Available(), "Available returned false when it should have been true.")
 	close(t, availableDb)
 	deleteTestDB(t)
-}
-
-func TestLoadDBConnectionString(t *testing.T) {
-	if _, err := postgres.LoadDBConnectionString(""); err == nil {
-		t.Errorf("Expected error but got none.")
-	}
-	if _, err := postgres.LoadDBConnectionString("asjdhgaksd"); err == nil {
-		t.Errorf("Expected error but got none.")
-	}
 }
 
 func close(t *testing.T, c io.Closer) {
