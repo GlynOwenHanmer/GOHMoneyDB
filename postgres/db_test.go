@@ -14,7 +14,7 @@ import (
 const (
 	host       = "localhost"
 	realDBName = "money"
-	testDBName = "moneytest"
+	testDBName = realDBName
 	user       = "glynhanmer"
 	ssl        = "disable"
 )
@@ -49,68 +49,28 @@ func TestNewConnectionString(t *testing.T) {
 	assert.Len(t, expected, 0)
 }
 
-func TestCreateStorage_InvalidParamaters(t *testing.T) {
-	assert.NotNil(t, postgres.CreateStorage("cs", "", "owner"), "expected error for empty storage name")
-	assert.NotNil(t, postgres.CreateStorage("cs", "name", ""), "expected error for empty storage owner")
-}
-
-func TestDeleteStorage_InvalidParamaters(t *testing.T) {
-	assert.NotNil(t, postgres.DeleteStorage("cs", ""), "expected error for empty storage name")
-}
-
-func TestCreateAndDeleteStorage(t *testing.T) {
-	cs := adminConnectionString(t)
-	err := postgres.CreateStorage(cs, testDBName, user)
-	//todo check it exists
-	assert.Nil(t, err)
-	err = postgres.DeleteStorage(cs, testDBName)
-	//todo check it doesn't exist
-	common.FatalIfError(t, err, "deleting storage")
-}
-
-func Test_createTestDB(t *testing.T) {
-	db := createTestDB(t)
-	if !assert.NotNil(t, db, `Unable to prepare DB for testing`) {
-		t.Fail()
-	}
-	close(t, db)
-	deleteTestDB(t)
-}
-
-//todo createTestDB should be given a base name for a db, which it should append a timestamp onto.
-// createTestDB prepares a DB connection to the test DB and return it, if possible, with any errors that occurred whilst preparing the connection.
-func createTestDB(t *testing.T) storage.Storage {
-	cs := adminConnectionString(t)
-	err := postgres.CreateStorage(cs, testDBName, user)
-	common.FatalIfError(t, err, "Error creating storage ")
-	cs, err = postgres.NewConnectionString(host, user, testDBName, ssl)
+//todo prepareTestDB should be given a base name for a db, which it should append a timestamp onto.
+// prepareTestDB prepares a DB connection to the test DB and return it, if possible, with any errors that occurred whilst preparing the connection.
+func prepareTestDB(t *testing.T) storage.Storage {
+	cs, err := postgres.NewConnectionString(host, user, testDBName, ssl)
 	common.FatalIfError(t, err, "Error creating connection string for storage access")
 	db, err := postgres.New(cs)
 	common.FatalIfError(t, err, "Error creating DB connection")
 	return db
 }
 
-func deleteTestDB(t *testing.T) {
-	cs := adminConnectionString(t)
-	err := postgres.DeleteStorage(cs, testDBName)
-	common.FatalIfError(t, err, "Error creating storage ")
-}
-
 func Test_isAvailable(t *testing.T) {
 	unavailableDb, _ := postgres.New("INVALID CONNECTION STRING")
 	assert.False(t, unavailableDb.Available(), "Storage should not be available")
-	availableDb := createTestDB(t)
+	availableDb := prepareTestDB(t)
 	assert.True(t, availableDb.Available(), "Available returned false when it should have been true.")
-	close(t, availableDb)
-	deleteTestDB(t)
+	nonReturningClose(t, availableDb)
 }
 
-func close(t *testing.T, c io.Closer) {
+func nonReturningClose(t *testing.T, c io.Closer) {
+	if c == nil {
+		t.Errorf("Attempted to close io.Closer but it was nil.")
+		return
+	}
 	common.FatalIfErrorf(t, c.Close(), "Error closing io.Closer %v", c)
-}
-
-func adminConnectionString(t *testing.T) string {
-	cs, err := postgres.NewConnectionString(host, user, "", ssl)
-	common.FatalIfError(t, err, "generating new admin connection string")
-	return cs
 }

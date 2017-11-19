@@ -3,10 +3,7 @@ package postgres
 import (
 	"bytes"
 	"database/sql"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"strings"
 )
 
@@ -44,73 +41,11 @@ func NewConnectionString(host, user, dbname, sslmode string) (s string, err erro
 	return
 }
 
-type failSafeWriter struct {
-	io.Writer
-	error
-}
-
-func (w *failSafeWriter) writef(format string, args ...interface{}) {
-	if w.error != nil {
-		return
-	}
-	bs := []byte(fmt.Sprintf(format, args...))
-	_, w.error = w.Writer.Write(bs)
-}
-
-func CreateStorage(connectionString, name, owner string) error {
-	if len(strings.TrimSpace(name)) == 0 {
-		return errors.New("storage name must be non-whitespace and longer than 0 characters")
-	}
-	if len(strings.TrimSpace(owner)) == 0 {
-		return errors.New("owner must be non-whitespace and longer than 0 characters")
-	}
-	// When using $1 whilst creating a DB with the db driver, errors were being
-	// returned to do with the use of $ signs.
-	// So I've reverted to plain old forming a query string manually.
-	q := new(bytes.Buffer)
-	w := failSafeWriter{Writer: q}
-	w.writef("CREATE DATABASE %s ", name)
-	w.writef("WITH OWNER = %s ", owner)
-	w.writef("ENCODING = 'UTF8' TABLESPACE = pg_default LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8' CONNECTION LIMIT = 10;")
-	if w.error != nil {
-		return w.error
-	}
-	db, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		return err
-	}
-	defer nonReturningCloseDB(db)
-	_, err = db.Exec(q.String())
-	return err
-}
-
-func DeleteStorage(connectionString, name string) error {
-	if len(strings.TrimSpace(name)) == 0 {
-		return errors.New("storage name must be non-whitespace and longer than 0 characters")
-	}
-	db, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		return err
-	}
-	defer nonReturningCloseDB(db)
-	_, err = db.Exec(`DROP DATABASE ` + name)
-	return err
-}
-
 // Available returns true if the Storage is available
-func (s *postgres) Available() bool {
-	return s.db.Ping() == nil // Ping() returns an error if db  is unavailable
+func (pg postgres) Available() bool {
+	return pg.db.Ping() == nil // Ping() returns an error if db  is unavailable
 }
 
-func (s postgres) Close() error {
-	return s.db.Close()
-}
-
-func nonReturningCloseDB(db *sql.DB) {
-	if db == nil {
-		log.Printf("Attempted to close db but it was nil.")
-	}
-	if err := db.Close(); err != nil {
-		log.Printf("Error closing Closer: %s", err)
-	}
+func (pg postgres) Close() error {
+	return pg.db.Close()
 }
