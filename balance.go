@@ -4,12 +4,6 @@ import (
 	"github.com/glynternet/go-accounting/balance"
 )
 
-const (
-//balanceInsertFields  = "account_id, date, balance, currency"
-//balanceSelectFields  = "id, date, balance, currency"
-//bBalanceSelectFields = "b.id, b.date, b.balance, currency"
-)
-
 // Balance holds logic for an Account item that is held within a go-money database.
 type Balance struct {
 	balance.Balance
@@ -26,23 +20,6 @@ func (b Balance) Equal(ob Balance) bool {
 
 // Balances holds multiple Balance items
 type Balances []Balance
-
-// Balances returns all Balances for a given Account and any errors that occur whilst attempting to retrieve the Balances.
-// The Balances are sorted by chronological order then by the id of the Balance in the DB
-//func (a Account) Balances(db *sql.DB) (*Balances, error) {
-//	return selectBalancesForAccount(db, a.ID)
-//}
-
-// selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account ID number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
-// The Balances are sorted by chronological order then by the id of the Balance in the DB
-//func selectBalancesForAccount(db *sql.DB, accountID uint) (*Balances, error) {
-//	rows, err := db.Query("SELECT "+balanceSelectFields+" FROM balances b WHERE account_id = $1 ORDER BY date ASC, ID ASC", accountID)
-//	if err != nil {
-//		return new(Balances), err
-//	}
-//	defer deferredClose(rows)
-//	return scanRowsForBalances(rows)
-//}
 
 //InsertBalance adds a Balance entry to the given DB for the given account and returns the inserted Balance item with any errors that occured while attempting to insert the Balance.
 //func (a Account) InsertBalance(db *sql.DB, b balance.Balance) (Balance, error) {
@@ -140,39 +117,7 @@ type Balances []Balance
 //	}
 //	return b, b.Validate()
 //}
-//
-// scanRowsForBalance scans a sql.Rows for a Balances object and returns any error occurring along the way.
-//func scanRowsForBalances(rows *sql.Rows) (bs *Balances, err error) {
-//	bs = new(Balances)
-//	for rows.Next() {
-//		var ID uint
-//		var date time.Time
-//		var amount float64
-//		var cur string
-//		err = rows.Scan(&ID, &date, &amount, &cur)
-//		if err != nil {
-//			return nil, err
-//		}
-//		var innerB balance.balance
-//		var m *money.Money
-//		m, err = moneyIntFromFloat(amount, cur)
-//		if err != nil {
-//			return nil, err
-//		}
-//		innerB, err = balance.New(date, *m)
-//		if err != nil {
-//			return nil, err
-//		}
-//		*bs = append(*bs, Balance{ID: ID, balance: innerB})
-//	}
-//	if err == nil {
-//		err = rows.Err()
-//	}
-//	if err == nil && len(*bs) == 0 {
-//		err = NoBalances
-//	}
-//	return
-//}
+
 //
 //func newBalance(ID uint, d time.Time, a float64, cur string) (*Balance, error) {
 //	mon, err := moneyIntFromFloat(a, cur)

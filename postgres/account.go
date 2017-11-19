@@ -17,7 +17,7 @@ const (
 	selectFields = "id, name, date_opened, date_closed, deleted_at"
 )
 
-// SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors occured whilst attempting to retrieve the Accounts.
+// SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors that occurred whilst attempting to retrieve the Accounts.
 func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 	queryString := "SELECT " + selectFields + " FROM accounts WHERE deleted_at IS NULL ORDER BY id ASC;"
 	rows, err := pg.db.Query(queryString)
@@ -27,6 +27,14 @@ func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 	defer nonReturningClose(rows)
 	return scanRowsForAccounts(rows)
 }
+
+//type AccountFilter func(*postgres) error
+
+//func ID(ID uint) AccountFilter {
+//	return func(pg *postgres) error {
+//
+//	}
+//}
 
 //accountJSONHelper is purely used as a helper struct to marshal and unmarshal Account objects to and from json bytes
 //type accountJSONHelper struct {

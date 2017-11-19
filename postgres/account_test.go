@@ -7,16 +7,11 @@ import (
 	"fmt"
 
 	"github.com/glynternet/go-accounting-storage"
-	"github.com/glynternet/go-accounting-storage/postgres"
 	"github.com/glynternet/go-accounting/account"
-	"github.com/glynternet/go-money/common"
 )
 
 func Test_SelectAccounts(t *testing.T) {
-	cs, err := postgres.NewConnectionString(host, user, realDBName, ssl)
-	common.FatalIfError(t, err, "creating connection string")
-	store, err := postgres.New(cs)
-	common.FatalIfError(t, err, "connecting to postgres store")
+	store := prepareTestDB(t)
 	defer nonReturningCloseStorage(t, store)
 	accounts, err := store.SelectAccounts()
 	if err != nil {
@@ -153,51 +148,6 @@ func Test_SelectAccounts(t *testing.T) {
 // 		}
 // 	}
 // }
-
-//func TestAccount_SelectBalanceWithID_InvalidID(t *testing.T) {
-//	db := prepareTestDB(t)
-//	defer close(t, db)
-//	account, err := moneypostgres.CreateAccount(db, newTestAccount())
-//	common.FatalIfError(t, err, "Error inserting account for testing")
-//	 Account with no Balances
-//b, err := account.SelectBalanceWithID(db, 10)
-//expectedErr := moneypostgres.NoBalances
-//if err != expectedErr {
-//	t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
-//	t.Logf("Selected balance: %v", b)
-//}
-//
-//innerBalance := newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, 10), 10, "GBP")
-//validBalance, err := account.InsertBalance(db, innerBalance)
-//common.FatalIfError(t, err, "Error occurred whilst inserting Balance for testing")
-//if validBalance.ID < 1 {
-//	t.Fatalf("Inserted balance returned balance of less than 1 so cannot be subtracted from to make invalid uint Balance ID")
-//}
-//invalidBalanceId := validBalance.ID - 1
-// Account with Balances
-//_, err = account.SelectBalanceWithID(db, invalidBalanceId)
-//if err != expectedErr {
-//	t.Errorf("Unexpected error.\n\tExpected: %s\n\tActual  : %s", expectedErr, err)
-//}
-//}
-//
-//func TestAccount_SelectBalanceWithID_ValidId(t *testing.T) {
-//	db := prepareTestDB(t)
-//	defer close(t, db)
-//	account := newTestDBAccount(t, db)
-//	var balances [3]moneypostgres.Balance
-//	for i := 0; i < 3; i++ {
-//		var err error
-//		balances[i], err = account.InsertBalance(db, newInnerBalanceIgnoreError(account.Start().AddDate(0, 0, i), int64(i), "GBP"))
-//		common.FatalIfError(t, err, "Error inserting Balance for testing")
-//	}
-//	for _, balance := range balances {
-//		selectedBalance, err := account.SelectBalanceWithID(db, balance.ID)
-//		common.ErrorIfError(t, err, "Expected nil error but recieved error")
-//		common.ErrorIfError(t, err, fmt.Sprintf("Unexpected Balance returned.\n\tExpected: %s\n\tActual  : %s", balance, selectedBalance))
-//	}
-//}
-//
 
 func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
 	for i := 0; i+1 < len(accounts); i++ {
