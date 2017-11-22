@@ -10,10 +10,12 @@ import (
 	"strings"
 )
 
-// New returns a connection to a postgres DB using the given connection string along with any errors that occur whilst attempting to open the connection.
+const driver = "postgres"
+
+// New returns a connection to a postgres Storage using the given connection string along with any errors that occur whilst attempting to open the connection.
 func New(connectionString string) (s *postgres, err error) {
 	var db *sql.DB
-	db, err = sql.Open("postgres", connectionString)
+	db, err = open(connectionString)
 	if err != nil {
 		return
 	}
@@ -24,7 +26,22 @@ type postgres struct {
 	db *sql.DB
 }
 
+// dbname can be an empty string when you are connecting to create the Storage
 func NewConnectionString(host, user, dbname, sslmode string) (s string, err error) {
+	if len(strings.TrimSpace(host)) == 0 {
+		err = errors.New("storage host must be non-whitespace and longer than 0 characters")
+		return
+	}
+	if len(strings.TrimSpace(user)) == 0 {
+		err = errors.New("storage user must be non-whitespace and longer than 0 characters")
+		return
+	}
+	switch sslmode {
+	case "enable", "disable":
+	default:
+		err = errors.New("storage sslmode must be value enable or disable")
+		return
+	}
 	kvs := map[string]string{
 		"host":    host,
 		"user":    user,
@@ -57,13 +74,23 @@ func (w *failSafeWriter) writef(format string, args ...interface{}) {
 	_, w.error = w.Writer.Write(bs)
 }
 
-func CreateStorage(connectionString, name, owner string) error {
-	if len(strings.TrimSpace(name)) == 0 {
-		return errors.New("storage name must be non-whitespace and longer than 0 characters")
+func CreateStorage(host, user, dbname, sslmode string) error {
+	adminConnect, err := NewConnectionString(host, user, "", sslmode)
+	if err != nil {
+		return err
 	}
-	if len(strings.TrimSpace(owner)) == 0 {
-		return errors.New("owner must be non-whitespace and longer than 0 characters")
+	userConnect, err := NewConnectionString(host, user, dbname, sslmode)
+	if err != nil {
+		return err
 	}
+	err = createDatabase(adminConnect, dbname, user)
+	if err != nil {
+		return err
+	}
+	return createAccountsTable(userConnect)
+}
+
+func createDatabase(connection, name, owner string) error {
 	// When using $1 whilst creating a DB with the db driver, errors were being
 	// returned to do with the use of $ signs.
 	// So I've reverted to plain old forming a query string manually.
@@ -75,7 +102,7 @@ func CreateStorage(connectionString, name, owner string) error {
 	if w.error != nil {
 		return w.error
 	}
-	db, err := sql.Open("postgres", connectionString)
+	db, err := open(connection)
 	if err != nil {
 		return err
 	}
@@ -84,17 +111,39 @@ func CreateStorage(connectionString, name, owner string) error {
 	return err
 }
 
+func createAccountsTable(connection string) error {
+	db, err := open(connection)
+	if err != nil {
+		return err
+	}
+	defer nonReturningCloseDB(db)
+	_, err = db.Exec(`CREATE TABLE accounts (
+	id SERIAL PRIMARY KEY,
+	name varchar(100) NOT NULL,
+	currency char(3) NOT NULL,
+	opened timestamp with time zone NOT NULL,
+	closed timestamp with time zone,
+	deleted timestamp with time zone
+);`)
+	return err
+}
+
 func DeleteStorage(connectionString, name string) error {
 	if len(strings.TrimSpace(name)) == 0 {
 		return errors.New("storage name must be non-whitespace and longer than 0 characters")
 	}
-	db, err := sql.Open("postgres", connectionString)
+	db, err := open(connectionString)
 	if err != nil {
 		return err
 	}
 	defer nonReturningCloseDB(db)
 	_, err = db.Exec(`DROP DATABASE ` + name)
 	return err
+}
+
+func open(connectionString string) (*sql.DB, error) {
+	db, err := sql.Open(driver, connectionString)
+	return db, err
 }
 
 // Available returns true if the Storage is available

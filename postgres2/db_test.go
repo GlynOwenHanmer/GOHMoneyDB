@@ -19,15 +19,12 @@ const (
 	testDBName = "moneytest"
 	user       = "glynhanmer"
 	ssl        = "disable"
+
+	accountNameLimit = 100
 )
 
 func TestNewConnectionString(t *testing.T) {
-	c, err := postgres.NewConnectionString("", "name", "", "")
-	assert.Nil(t, err)
-	assert.NotNil(t, c)
-	assert.Equal(t, "user=name", c)
-
-	c, err = postgres.NewConnectionString("localhost", "user", "dbname", "disable")
+	c, err := postgres.NewConnectionString("localhost", "user", "dbname", "disable")
 	assert.Nil(t, err)
 	assert.NotNil(t, c)
 	expected := map[string]string{
@@ -52,8 +49,8 @@ func TestNewConnectionString(t *testing.T) {
 }
 
 func TestCreateStorage_InvalidParamaters(t *testing.T) {
-	assert.NotNil(t, postgres.CreateStorage("cs", "", "owner"), "expected error for empty storage name")
-	assert.NotNil(t, postgres.CreateStorage("cs", "name", ""), "expected error for empty storage owner")
+	assert.NotNil(t, postgres.CreateStorage("", "user", "dbname", "sslmode"), "expected error for empty host")
+	assert.NotNil(t, postgres.CreateStorage("host", "", "dbname", "sslmode"), "expected error for empty storage owner")
 }
 
 func TestDeleteStorage_InvalidParamaters(t *testing.T) {
@@ -63,7 +60,7 @@ func TestDeleteStorage_InvalidParamaters(t *testing.T) {
 func TestCreateAndDeleteStorage(t *testing.T) {
 	cs := adminConnectionString(t)
 
-	err := postgres.CreateStorage(cs, testDBName, user)
+	err := postgres.CreateStorage(host, user, testDBName, ssl)
 	assert.Nil(t, err)
 
 	// Test DB has been created
@@ -75,8 +72,8 @@ func TestCreateAndDeleteStorage(t *testing.T) {
 	common.FatalIfError(t, err, "scanning db name query for data")
 	assert.Equal(t, testDBName, data)
 
-	// Check that tables have been created
-	// SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public';
+	//Check that tables have been created
+	//SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public';
 
 	err = postgres.DeleteStorage(cs, testDBName)
 	common.FatalIfError(t, err, "deleting storage")
@@ -98,7 +95,7 @@ func Test_createTestDB(t *testing.T) {
 // createTestDB prepares a DB connection to the test DB and return it, if possible, with any errors that occurred whilst preparing the connection.
 func createTestDB(t *testing.T) storage.Storage {
 	cs := adminConnectionString(t)
-	err := postgres.CreateStorage(cs, testDBName, user)
+	err := postgres.CreateStorage(host, user, testDBName, ssl)
 	common.FatalIfError(t, err, "Error creating storage ")
 	cs, err = postgres.NewConnectionString(host, user, testDBName, ssl)
 	common.FatalIfError(t, err, "Error creating connection string for storage access")
