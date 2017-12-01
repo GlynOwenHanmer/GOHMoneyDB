@@ -10,6 +10,7 @@ import (
 	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-money/currency"
 	"github.com/lib/pq"
+	"errors"
 )
 
 const (
@@ -26,6 +27,10 @@ func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 	}
 	defer nonReturningClose(rows)
 	return scanRowsForAccounts(rows)
+}
+
+func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
+	return nil, errors.New("not yet implemented")
 }
 
 //type AccountFilter func(*postgres) error

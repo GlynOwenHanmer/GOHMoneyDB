@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/glynternet/go-accounting-storage"
-	"github.com/glynternet/go-accounting-storage/postgres"
+	postgres "github.com/glynternet/go-accounting-storage/postgres2"
 	"github.com/glynternet/go-accounting/common"
 )
 

@@ -8,6 +8,12 @@ import (
 
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/account"
+	postgres "github.com/glynternet/go-accounting-storage/postgres2"
+	"github.com/stretchr/testify/assert"
+	"time"
+
+	"github.com/glynternet/go-money/currency"
+	"github.com/glynternet/go-money/common"
 )
 
 func Test_SelectAccounts(t *testing.T) {
@@ -28,65 +34,21 @@ func Test_SelectAccounts(t *testing.T) {
 	checkAccountsSortedByIdAscending(*accounts, t)
 }
 
-// func Test_CreateAccount(t *testing.T) {
-// 	now := time.Now()
-// 	testSets := []struct {
-// 		name                 string
-// 		start, expectedStart time.Time
-// 		end, expectedEnd     gohtime.NullTime
-// 		error
-// 	}{
-// 		{
-// 			name:  "TEST_ACCOUNT",
-// 			start: now,
-// 			end: gohtime.NullTime{
-// 				Valid: true,
-// 				Time:  now.AddDate(1, 0, 0),
-// 			},
-// 			error: nil,
-// 		},
-// 		{
-// 			name:  "TEST_ACCOUNT",
-// 			start: now,
-// 			end:   gohtime.NullTime{Valid: false},
-// 			error: nil,
-// 		},
-// 		{
-// 			name:  "Account With'Apostrophe",
-// 			start: now,
-// 			end:   gohtime.NullTime{Valid: false},
-// 			error: nil,
-// 		},
-// 	}
-// 	db := prepareTestDB(t)
-// 	defer close(t, db)
-// 	for _, testSet := range testSets {
-// 		newAccount, err := account.New(testSet.name, testSet.start, testSet.end)
-// 		common.FatalIfError(t, err, "Error creating new account for testing")
-// 		actualCreatedAccount, err := moneypostgres.CreateAccount(db, newAccount)
-// 		if testSet.error == nil && err != nil || testSet.error != nil && err == nil {
-// 			t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
-// 		}
-// 		if _, testSetErrIsNewAccountFieldError := testSet.error.(account.FieldError); testSetErrIsNewAccountFieldError {
-// 			if _, actualErrorIsNewAccountFieldError := err.(account.FieldError); !actualErrorIsNewAccountFieldError {
-// 				t.Errorf("Unexpected error:\nExpected: %s\nActual  : %s", testSet.error, err)
-// 			}
-// 		}
-// 		expectedAccount, err := account.New(
-// 			testSet.name,
-// 			testSet.start.Truncate(24*time.Hour),
-// 			gohtime.NullTime{
-// 				Valid: testSet.end.Valid,
-// 				Time:  testSet.end.Time.Truncate(24 * time.Hour),
-// 			},
-// 		)
-// 		common.FatalIfError(t, err, "Error creating account for testing")
-// 		if !actualCreatedAccount.Account.Equal(expectedAccount) {
-// 			t.Errorf("Unexpected account:\nExpected: %+v\nActual  : %+v", expectedAccount, actualCreatedAccount)
-// 		}
-// 		//todo Check that id has incremented by one?
-// 	}
-// }
+ func Test_CreateAccount(t *testing.T) {
+	 err := postgres.CreateStorage(host, user, testDBName, ssl)
+	 assert.Nil(t, err)
+	 userCS, err := postgres.NewConnectionString(host, user, testDBName, ssl)
+	 assert.Nil(t, err)
+	 store, err := postgres.New(userCS)
+	 assert.Nil(t, err)
+	 a := newTestAccount(t)
+	 dba, err := store.InsertAccount(a)
+	 assert.Nil(t, err)
+	 assert.NotNil(t, dba)
+	 cs := adminConnectionString(t)
+	 err = postgres.DeleteStorage(cs, testDBName)
+	 assert.Nil(t, err)
+ }
 
 // func Test_SelectAccountsOpen(t *testing.T) {
 // 	db := prepareTestDB(t)
@@ -317,6 +279,7 @@ func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
 //	db := prepareTestDB(t)
 //	defer close(t, db)
 //
+
 //	a := newTestDBAccount(t, db)
 //	b := a
 //	assertFunc := func(expected bool) {
@@ -343,20 +306,13 @@ func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
 //	assert.Equal(t, false, equal)
 //}
 //
-//func newTestAccount() account.Account {
-//	account, err := account.New(
-//		"TEST_ACCOUNT",
-//		time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC),
-//		gohtime.NullTime{
-//			Valid: true,
-//			Time:  time.Date(2001, 1, 1, 1, 1, 1, 1, time.UTC),
-//		},
-//	)
-//	if err != nil {
-//		panic(err)
-//	}
-//	return account
-//}
+func newTestAccount(t *testing.T) account.Account {
+	c, err := currency.NewCode("EUR")
+	common.FatalIfError(t, err, "creating currency code")
+	a, err := account.New("TEST ACCOUNT", *c, time.Now())
+	common.FatalIfError(t, err, "creating account")
+	return *a
+}
 //
 //func newTestDBAccount(t *testing.T, db *sql.DB) moneypostgres.Account {
 //	account, err := moneypostgres.CreateAccount(db, newTestAccount())
