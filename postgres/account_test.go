@@ -8,6 +8,7 @@ import (
 
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/account"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_SelectAccounts(t *testing.T) {
@@ -19,12 +20,8 @@ func Test_SelectAccounts(t *testing.T) {
 			t.Errorf("Unexpected error type when selecting accounts. Error: %s", err.Error())
 		}
 	}
-	if accounts == nil {
-		t.Fatalf("SelectAccounts returned nil Accounts object.\nError: %s", err)
-	}
-	if len(*accounts) == 0 {
-		t.Fatalf("No accounts were returned.")
-	}
+	assert.NotNil(t, accounts)
+	assert.NotEmpty(t, *accounts)
 	checkAccountsSortedByIdAscending(*accounts, t)
 }
 

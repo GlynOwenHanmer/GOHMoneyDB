@@ -1,7 +1,9 @@
 package postgres2
 
 import (
+	"bytes"
 	"database/sql"
+	"fmt"
 	"io"
 	"log"
 	"time"
@@ -10,18 +12,31 @@ import (
 	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-money/currency"
 	"github.com/lib/pq"
-	"errors"
 )
 
 const (
-	// insertFields = "name, date_opened, date_closed"
-	selectFields = "id, name, date_opened, date_closed, deleted_at"
+	fieldID       = "id"
+	fieldName     = "name"
+	fieldOpened   = "opened"
+	fieldClosed   = "closed"
+	fieldCurrency = "currency"
+	fieldDeleted  = "deleted"
+	table         = "accounts"
+)
+
+var (
+	fieldsInsert        = fmt.Sprintf("%s, %s, %s, %s", fieldName, fieldOpened, fieldClosed, fieldCurrency)
+	fieldsSelect        = fmt.Sprintf("%s, %s, %s, %s, %s, %s", fieldID, fieldName, fieldOpened, fieldClosed, fieldCurrency, fieldDeleted)
+	querySelectAccounts = fmt.Sprintf("SELECT %s FROM %s WHERE %s IS NULL ORDER BY %s ASC;", fieldsSelect, table, fieldDeleted, fieldID)
 )
 
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors that occurred whilst attempting to retrieve the Accounts.
 func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
-	queryString := "SELECT " + selectFields + " FROM accounts WHERE deleted_at IS NULL ORDER BY id ASC;"
-	rows, err := pg.db.Query(queryString)
+	return queryAccounts(pg.db, querySelectAccounts, nil)
+}
+
+func queryAccounts(db *sql.DB, queryString string, values []interface{}) (*storage.Accounts, error) {
+	rows, err := db.Query(queryString, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +45,44 @@ func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 }
 
 func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
-	return nil, errors.New("not yet implemented")
+	var queryString bytes.Buffer
+	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, fieldsInsert)
+	fmt.Fprint(&queryString, `VALUES ($1, $2, $3, $4) `)
+	fmt.Fprintf(&queryString, `returning %s`, fieldID)
+	row := pg.db.QueryRow(queryString.String(), a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
+	id := new(uint)
+	err := row.Scan(id)
+	if err != nil {
+		return nil, err
+	}
+	return &storage.Account{ID: *id, Account: a}, err
+}
+
+// scanRowForAccount scans a single sql.Row for a Account object and returns any error occurring along the way.
+// If the account exists but has been marked as deleted, an ErrAccountDeleted error will be returned along with the account.
+func scanRowForAccount(row *sql.Row) (*storage.Account, error) {
+	var id uint
+	var name, currencyCode string
+	var opened time.Time
+	var closed, deleted pq.NullTime
+	if err := row.Scan(&id, &name, &opened, &closed, &currencyCode, &deleted); err != nil {
+		return nil, err
+	}
+	c, err := currency.NewCode(currencyCode)
+	if err != nil {
+		return nil, err
+	}
+	innerAccount, err := account.New(name, *c, opened)
+	if err != nil {
+		return nil, err
+	}
+	if closed.Valid {
+		err := account.CloseTime(closed.Time)(innerAccount)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &storage.Account{ID: id, Account: *innerAccount}, nil
 }
 
 //type AccountFilter func(*postgres) error
@@ -111,7 +163,7 @@ func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
 //
 // SelectAccountsOpen returns an Accounts item holding all Account entries within the given database that are open along with any errors occured whilst attempting to retrieve the Accounts.
 //func SelectAccountsOpen(db *sql.DB) (*Accounts, error) {
-//	queryString := "SELECT " + selectFields + " FROM accounts WHERE date_closed IS NULL AND deleted_at IS NULL ORDER BY id ASC;"
+//	queryString := "SELECT " + fieldsSelect + " FROM accounts WHERE date_closed IS NULL AND deleted_at IS NULL ORDER BY id ASC;"
 //	rows, err := db.Query(queryString)
 //	if err != nil {
 //		return new(Accounts), err
@@ -125,7 +177,7 @@ func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
 //	if db == nil {
 //		return Account{}, errors.New("nil db pointer")
 //	}
-//	row := db.QueryRow("SELECT "+selectFields+" FROM accounts WHERE id = $1;", id)
+//	row := db.QueryRow("SELECT "+fieldsSelect+" FROM accounts WHERE id = $1;", id)
 //	account, err := scanRowForAccount(row)
 //	if err == sql.ErrNoRows {
 //		err = NoAccountWithIDError(id)
@@ -139,9 +191,9 @@ func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
 // CreateAccount created an Account entry within the DB and returns it, if successful, along with any errors that occur whilst attempting to create the Account.
 //func CreateAccount(db *sql.DB, newAccount account.Account) (*Account, error) {
 //	var queryString bytes.Buffer
-//	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, insertFields)
+//	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, fieldsInsert)
 //	fmt.Fprint(&queryString, `VALUES ($1, $2, $3) `)
-//	fmt.Fprintf(&queryString, `returning %s`, selectFields)
+//	fmt.Fprintf(&queryString, `returning %s`, fieldsSelect)
 //	row := db.QueryRow(queryString.String(), newAccount.Name, newAccount.Start(), pq.NullTime(newAccount.End()))
 //	return scanRowForAccount(row)
 //}
@@ -164,30 +216,32 @@ func scanRowsForAccounts(rows *sql.Rows) (*storage.Accounts, error) {
 	var openAccounts storage.Accounts
 	for rows.Next() {
 		var id uint
-		var name string
-		var start time.Time
-		var end, deletedAt pq.NullTime
-		err := rows.Scan(&id, &name, &start, &end, &deletedAt)
+		var name, code string
+		var opened time.Time
+		var closed, deleted pq.NullTime
+		// 	fieldID, fieldName, fieldOpened, fieldClosed, fieldCurrency, fieldDeleted)
+
+		err := rows.Scan(&id, &name, &opened, &closed, &code, &deleted)
 		if err != nil {
 			return nil, err
 		}
-		c, err := currency.NewCode("GBP")
+		c, err := currency.NewCode(code)
 		if err != nil {
 			return nil, err
 		}
-		innerAccount, err := account.New(name, *c, start)
+		innerAccount, err := account.New(name, *c, opened)
 		if err != nil {
 			return nil, err
 		}
-		if end.Valid {
-			err = account.CloseTime(end.Time)(innerAccount)
+		if closed.Valid {
+			err = account.CloseTime(closed.Time)(innerAccount)
 			if err != nil {
 				return nil, err
 			}
 		}
 		a := &storage.Account{ID: id, Account: *innerAccount}
-		if deletedAt.Valid {
-			err := storage.DeletedAt(deletedAt.Time)(a)
+		if deleted.Valid {
+			err := storage.DeletedAt(deleted.Time)(a)
 			if err != nil {
 				return nil, err
 			}
@@ -235,7 +289,7 @@ func scanRowsForAccounts(rows *sql.Rows) (*storage.Accounts, error) {
 //		}
 //	}
 //	account, err := scanRowForAccount(
-//		db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+selectFields, update.Name, update.Start(), pq.NullTime(update.End()), a.ID),
+//		db.QueryRow(`UPDATE accounts SET name = $1, date_opened = $2, date_closed = $3 WHERE id = $4 returning `+fieldsSelect, update.Name, update.Start(), pq.NullTime(update.End()), a.ID),
 //	)
 //	return *account, err
 //}
@@ -247,7 +301,7 @@ func scanRowsForAccounts(rows *sql.Rows) (*storage.Accounts, error) {
 //	}
 //	deletedAt := pq.NullTime{Valid: true, Time: time.Now()}
 //	_, err := scanRowForAccount(
-//		db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+selectFields, deletedAt, a.ID),
+//		db.QueryRow(`UPDATE accounts SET deleted_at = $1 WHERE id = $2 returning `+fieldsSelect, deletedAt, a.ID),
 //	)
 //	if err == ErrAccountDeleted {
 //		a.deletedAt = gohtime.NullTime(deletedAt)

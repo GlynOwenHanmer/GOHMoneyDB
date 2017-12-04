@@ -1,54 +1,55 @@
 package postgres2_test
 
 import (
-	"testing"
-
 	"bytes"
 	"fmt"
-
-	"github.com/glynternet/go-accounting-storage"
-	"github.com/glynternet/go-accounting/account"
-	postgres "github.com/glynternet/go-accounting-storage/postgres2"
-	"github.com/stretchr/testify/assert"
+	"testing"
 	"time"
 
-	"github.com/glynternet/go-money/currency"
+	"github.com/glynternet/go-accounting-storage"
+	"github.com/glynternet/go-accounting-storage/postgres2"
+	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-money/common"
+	"github.com/glynternet/go-money/currency"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_SelectAccounts(t *testing.T) {
+	createTestDB(t)
+	defer deleteTestDB(t)
 	store := prepareTestDB(t)
 	defer nonReturningClose(t, store)
 	accounts, err := store.SelectAccounts()
-	if err != nil {
-		if _, ok := err.(account.FieldError); !ok {
-			t.Errorf("Unexpected error type when selecting accounts. Error: %s", err.Error())
-		}
+	common.FatalIfError(t, err, "selecting accounts")
+	if !assert.NotNil(t, accounts) {
+		t.FailNow()
 	}
-	if accounts == nil {
-		t.Fatalf("SelectAccounts returned nil Accounts object.\nError: %s", err)
-	}
-	if len(*accounts) == 0 {
-		t.Fatalf("No accounts were returned.")
-	}
+	assert.Len(t, *accounts, 0)
 	checkAccountsSortedByIdAscending(*accounts, t)
 }
 
- func Test_CreateAccount(t *testing.T) {
-	 err := postgres.CreateStorage(host, user, testDBName, ssl)
-	 assert.Nil(t, err)
-	 userCS, err := postgres.NewConnectionString(host, user, testDBName, ssl)
-	 assert.Nil(t, err)
-	 store, err := postgres.New(userCS)
-	 assert.Nil(t, err)
-	 a := newTestAccount(t)
-	 dba, err := store.InsertAccount(a)
-	 assert.Nil(t, err)
-	 assert.NotNil(t, dba)
-	 cs := adminConnectionString(t)
-	 err = postgres.DeleteStorage(cs, testDBName)
-	 assert.Nil(t, err)
- }
+func Test_CreateAccount(t *testing.T) {
+	createTestDB(t)
+	defer deleteTestDB(t)
+	userCS, err := postgres2.NewConnectionString(host, user, testDBName, ssl)
+	assert.Nil(t, err)
+	store, err := postgres2.New(userCS)
+	defer nonReturningClose(t, store)
+	assert.Nil(t, err)
+	numOfAccounts := 10
+	as := newTestAccounts(t, numOfAccounts)
+	for _, a := range as {
+		dba, err := store.InsertAccount(a)
+		common.FatalIfError(t, err, "inserting account")
+		assert.Equal(t, a, dba.Account)
+	}
+	accounts, err := store.SelectAccounts()
+	common.FatalIfError(t, err, "selecting accounts")
+	if !assert.NotNil(t, accounts) {
+		t.FailNow()
+	}
+	assert.Len(t, *accounts, numOfAccounts)
+}
 
 // func Test_SelectAccountsOpen(t *testing.T) {
 // 	db := prepareTestDB(t)
@@ -313,6 +314,21 @@ func newTestAccount(t *testing.T) account.Account {
 	common.FatalIfError(t, err, "creating account")
 	return *a
 }
+
+// newTestAccounts creates an account with a random currency and random name
+func newTestAccounts(t *testing.T, count int) []account.Account {
+	as := make([]account.Account, count)
+	for i := 0; i < count; i++ {
+		c, err := currency.NewCode(fmt.Sprintf("C%02d", i))
+		common.FatalIfError(t, err, "creating currency code")
+		name := fmt.Sprintf("TEST ACCOUNT %02d", i)
+		a, err := account.New(name, *c, time.Now())
+		common.FatalIfError(t, err, "creating account")
+		as[i] = *a
+	}
+	return as
+}
+
 //
 //func newTestDBAccount(t *testing.T, db *sql.DB) moneypostgres.Account {
 //	account, err := moneypostgres.CreateAccount(db, newTestAccount())

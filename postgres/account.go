@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"errors"
+
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-money/currency"
@@ -26,6 +28,10 @@ func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 	}
 	defer nonReturningClose(rows)
 	return scanRowsForAccounts(rows)
+}
+
+func (pg *postgres) InsertAccount(a account.Account) (*storage.Account, error) {
+	return nil, errors.New("not implemented")
 }
 
 //type AccountFilter func(*postgres) error

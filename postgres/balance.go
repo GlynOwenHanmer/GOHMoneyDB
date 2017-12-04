@@ -44,7 +44,7 @@ func scanRowsForBalances(rows *sql.Rows) (bs *storage.Balances, err error) {
 			return nil, err
 		}
 		var innerB *balance.Balance
-		innerB, err = balance.New(date, balance.Amount(int(amount)))
+		innerB, err = balance.New(date, balance.Amount(int(amount*1000)/10))
 		if err != nil {
 			return nil, err
 		}
