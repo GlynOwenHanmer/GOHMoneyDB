@@ -1,7 +1,6 @@
 package postgres2
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"io"
@@ -28,6 +27,7 @@ var (
 	fieldsInsert        = fmt.Sprintf("%s, %s, %s, %s", fieldName, fieldOpened, fieldClosed, fieldCurrency)
 	fieldsSelect        = fmt.Sprintf("%s, %s, %s, %s, %s, %s", fieldID, fieldName, fieldOpened, fieldClosed, fieldCurrency, fieldDeleted)
 	querySelectAccounts = fmt.Sprintf("SELECT %s FROM %s WHERE %s IS NULL ORDER BY %s ASC;", fieldsSelect, table, fieldDeleted, fieldID)
+	queryInsertAccount  = fmt.Sprintf(`INSERT INTO accounts (%s) VALUES ($1, $2, $3, $4) returning %s`, fieldsInsert, fieldID)
 )
 
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors that occurred whilst attempting to retrieve the Accounts.
@@ -35,21 +35,8 @@ func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 	return queryAccounts(pg.db, querySelectAccounts, nil)
 }
 
-func queryAccounts(db *sql.DB, queryString string, values []interface{}) (*storage.Accounts, error) {
-	rows, err := db.Query(queryString, values...)
-	if err != nil {
-		return nil, err
-	}
-	defer nonReturningClose(rows)
-	return scanRowsForAccounts(rows)
-}
-
 func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
-	var queryString bytes.Buffer
-	fmt.Fprintf(&queryString, `INSERT INTO accounts (%s) `, fieldsInsert)
-	fmt.Fprint(&queryString, `VALUES ($1, $2, $3, $4) `)
-	fmt.Fprintf(&queryString, `returning %s`, fieldID)
-	row := pg.db.QueryRow(queryString.String(), a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
+	row := pg.db.QueryRow(queryInsertAccount, a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
 	id := new(uint)
 	err := row.Scan(id)
 	if err != nil {
@@ -210,6 +197,15 @@ func scanRowForAccount(row *sql.Row) (*storage.Account, error) {
 //	row := db.QueryRow(query.String(), a.ID, id)
 //	return scanRowForBalance(row)
 //}
+
+func queryAccounts(db *sql.DB, queryString string, values []interface{}) (*storage.Accounts, error) {
+	rows, err := db.Query(queryString, values...)
+	if err != nil {
+		return nil, err
+	}
+	defer nonReturningClose(rows)
+	return scanRowsForAccounts(rows)
+}
 
 // scanRowsForAccounts scans an sql.Rows object for go-moneypostgres.Accounts objects and returns then along with any error that occurs whilst attempting to scan.
 func scanRowsForAccounts(rows *sql.Rows) (*storage.Accounts, error) {

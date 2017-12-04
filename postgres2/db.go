@@ -128,11 +128,15 @@ func createAccountsTable(connection string) error {
 	return err
 }
 
-func DeleteStorage(connectionString, name string) error {
+func DeleteStorage(host, user, name, sslmode string) error {
 	if len(strings.TrimSpace(name)) == 0 {
 		return errors.New("storage name must be non-whitespace and longer than 0 characters")
 	}
-	db, err := open(connectionString)
+	adminConnect, err := NewConnectionString(host, user, "", sslmode)
+	if err != nil {
+		return err
+	}
+	db, err := open(adminConnect)
 	if err != nil {
 		return err
 	}

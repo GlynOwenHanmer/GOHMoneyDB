@@ -54,7 +54,7 @@ func TestCreateStorage_InvalidParamaters(t *testing.T) {
 }
 
 func TestDeleteStorage_InvalidParamaters(t *testing.T) {
-	assert.NotNil(t, postgres.DeleteStorage("cs", ""), "expected error for empty storage name")
+	assert.NotNil(t, postgres.DeleteStorage(host, user, "", ssl), "expected error for empty storage name")
 }
 
 func TestCreateAndDeleteStorage(t *testing.T) {
@@ -72,10 +72,10 @@ func TestCreateAndDeleteStorage(t *testing.T) {
 	common.FatalIfError(t, err, "scanning db name query for data")
 	assert.Equal(t, testDBName, data)
 
-	//Check that tables have been created
+	// TODO: Check that tables have been created
 	//SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public';
 
-	err = postgres.DeleteStorage(cs, testDBName)
+	err = postgres.DeleteStorage(host, user, testDBName, ssl)
 	common.FatalIfError(t, err, "deleting storage")
 
 	// Test DB no longer exists
