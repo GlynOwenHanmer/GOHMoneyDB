@@ -4,15 +4,31 @@ import (
 	"database/sql"
 	"time"
 
+	"fmt"
+
+	"errors"
+
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/balance"
 )
 
 const (
-	//balanceInsertFields  = "account_id, date, balance, currency"
-	balanceSelectFields = "id, date, balance"
+	balancesFieldAccountID = "account_id"
+	balancesFieldBalance   = "balance"
+	balancesFieldID        = "id"
+	balancesFieldDate      = "date"
+	balancesTable          = "balances"
+)
 
-//bBalanceSelectFields = "b.id, b.date, b.balance, currency"
+var (
+	balancesSelectFields                    = fmt.Sprintf("%s, %s, %s", balancesFieldID, balancesFieldDate, balancesFieldBalance)
+	balancesQuerySelectBalancesForAccountId = fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 ORDER BY %s ASC, ID ASC",
+		balancesSelectFields,
+		balancesTable,
+		balancesFieldAccountID,
+		balancesFieldDate,
+	)
 )
 
 //Balances returns all Balances for a given Account and any errors that occur whilst attempting to retrieve the Balances.
@@ -24,7 +40,11 @@ func (pg postgres) SelectAccountBalances(a storage.Account) (*storage.Balances, 
 //selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account ID number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
 //The Balances are sorted by chronological order then by the id of the Balance in the DB
 func (pg postgres) selectBalancesForAccountID(accountID uint) (*storage.Balances, error) {
-	rows, err := pg.db.Query("SELECT "+balanceSelectFields+" FROM balances b WHERE account_id = $1 ORDER BY date ASC, ID ASC", accountID)
+	return queryBalances(pg.db, balancesQuerySelectBalancesForAccountId, accountID)
+}
+
+func queryBalances(db *sql.DB, queryString string, values ...interface{}) (*storage.Balances, error) {
+	rows, err := db.Query(queryString, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -54,4 +74,8 @@ func scanRowsForBalances(rows *sql.Rows) (bs *storage.Balances, err error) {
 		err = rows.Err()
 	}
 	return
+}
+
+func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage.Balance, error) {
+	return nil, errors.New("not supported")
 }

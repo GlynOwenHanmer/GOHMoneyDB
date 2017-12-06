@@ -32,7 +32,7 @@ var (
 
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors that occurred whilst attempting to retrieve the Accounts.
 func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
-	return queryAccounts(pg.db, querySelectAccounts, nil)
+	return queryAccounts(pg.db, querySelectAccounts)
 }
 
 func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
@@ -198,7 +198,7 @@ func scanRowForAccount(row *sql.Row) (*storage.Account, error) {
 //	return scanRowForBalance(row)
 //}
 
-func queryAccounts(db *sql.DB, queryString string, values []interface{}) (*storage.Accounts, error) {
+func queryAccounts(db *sql.DB, queryString string, values ...interface{}) (*storage.Accounts, error) {
 	rows, err := db.Query(queryString, values...)
 	if err != nil {
 		return nil, err

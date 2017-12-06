@@ -17,57 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_BalancesForInvalidAccountId(t *testing.T) {
-	validID := uint(1)
-	db := prepareTestDB(t)
-	defer close(t, db)
-	a, err := moneypostgres.SelectAccountWithID(db, validID)
-	if err != nil {
-		t.Errorf("Error selecting account for testings: %s", err)
-	}
-	invalidIDs := []uint{0, 99999}
-	for _, invalidID := range invalidIDs {
-		a.ID = invalidID
-		balances, err := a.Balances(db)
-		if err == nil {
-			t.Errorf("account ID: %d, expected error but got nil", a.ID)
-		}
-		if balances != nil && len(*balances) != 0 {
-			t.Errorf("account ID: %d, expected no balances but got: %s", invalidID, balances)
-		}
-	}
-}
 
-func TestBalancesForValidAccountId(t *testing.T) {
-	validID := uint(1)
-	db := prepareTestDB(t)
-	defer close(t, db)
-	a, err := moneypostgres.SelectAccountWithID(db, validID)
-	common.ErrorIfError(t, err, "Selecting accounts for testing")
-	balances, err := a.Balances(db)
-	common.ErrorIfErrorf(t, err, "Getting balances for account %d", validID)
-	minBalances := 91
-	if len(*balances) < minBalances {
-		t.Errorf("account ID: %d, expected at least %d balances but got: %d", validID, minBalances, len(*balances))
-		return
-	}
-	expectedID := uint(1)
-	actualID := (*balances)[0].ID
-	if expectedID != actualID {
-		t.Errorf(`Unexpected Balance ID.\nExpected: %d\nActual:  %d`, expectedID, actualID)
-	}
-	expectedAmount, err := money.New(63641, "GBP")
-	common.FatalIfError(t, err, "Creating Money")
-	actualAmount := (*balances)[0].Money()
-	if eq, err := actualAmount.Equal(*expectedAmount); !eq || (err != nil) {
-		t.Errorf("account ID: %d, first balance, expected balance amount of %+v but got %+v", validID, expectedAmount, actualAmount)
-	}
-	expectedDate := time.Date(2016, 06, 17, 0, 0, 0, 0, time.UTC)
-	actualDate := (*balances)[0].Date()
-	if !expectedDate.Equal(actualDate) {
-		t.Errorf("account ID: %d, first balance, expected date of %s but got %s", validID, expectedDate, actualDate)
-	}
-}
 
 func Test_BalanceInsert_InvalidBalance(t *testing.T) {
 	accountID := uint(1)

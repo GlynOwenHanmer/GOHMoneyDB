@@ -1,6 +1,9 @@
 package storage
 
-import "github.com/glynternet/go-accounting/account"
+import (
+	"github.com/glynternet/go-accounting/account"
+	"github.com/glynternet/go-accounting/balance"
+)
 
 // Storage is something that can be used to store certain go-accounting types
 type Storage interface {
@@ -12,7 +15,7 @@ type Storage interface {
 	//UpdateAccount(a *Account, us account.Account) error
 	//DeleteAccount(a *Account) error
 	//
-	//InsertBalance(a Account, b balance.Balance) (*Balance, error)
+	InsertBalance(a Account, b balance.Balance) (*Balance, error)
 	SelectAccountBalances(Account) (*Balances, error)
 	//UpdateBalance(a Account, b *Balance, us balance.Balance) error
 	//DeleteBalance(a Account, b *Balance) error

@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"time"
 
+	"errors"
+
+	"fmt"
+
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/balance"
 )
@@ -24,9 +28,10 @@ func (pg postgres) SelectAccountBalances(a storage.Account) (*storage.Balances, 
 //selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account ID number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
 //The Balances are sorted by chronological order then by the id of the Balance in the DB
 func (pg postgres) selectBalancesForAccountID(accountID uint) (*storage.Balances, error) {
-	rows, err := pg.db.Query("SELECT "+balanceSelectFields+" FROM balances b WHERE account_id = $1 ORDER BY date ASC, ID ASC", accountID)
+	qs := "SELECT " + balanceSelectFields + " FROM balances b WHERE account_id = $1 ORDER BY date ASC, ID ASC"
+	rows, err := pg.db.Query(qs, accountID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error querying with query string '%s': %v", qs, err)
 	}
 	defer nonReturningClose(rows)
 	return scanRowsForBalances(rows)
@@ -54,4 +59,8 @@ func scanRowsForBalances(rows *sql.Rows) (bs *storage.Balances, err error) {
 		err = rows.Err()
 	}
 	return
+}
+
+func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage.Balance, error) {
+	return nil, errors.New("not supported")
 }
