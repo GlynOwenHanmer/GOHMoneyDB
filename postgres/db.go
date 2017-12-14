@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -21,24 +20,20 @@ type postgres struct {
 	db *sql.DB
 }
 
-func NewConnectionString(host, user, dbname, sslmode string) (s string, err error) {
+func NewConnectionString(host, user, dbname, sslmode string) (s string) {
 	kvs := map[string]string{
 		"host":    host,
 		"user":    user,
 		"dbname":  dbname,
 		"sslmode": sslmode,
 	}
-	cs := new(bytes.Buffer)
+	var options []string
 	for k, v := range kvs {
 		if len(v) > 0 {
-			_, err = fmt.Fprintf(cs, "%s=%s ", k, v)
-			if err != nil {
-				return
-			}
+			options = append(options, fmt.Sprintf("%s=%s", k, v))
 		}
 	}
-	s = strings.TrimSpace(cs.String())
-	return
+	return strings.Join(options, " ")
 }
 
 // Available returns true if the Storage is available

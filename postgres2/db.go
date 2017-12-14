@@ -26,6 +26,7 @@ type postgres struct {
 	db *sql.DB
 }
 
+// NewConnectionString creates a new connection string for the postgres db
 // dbname can be an empty string when you are connecting to create the Storage
 func NewConnectionString(host, user, dbname, sslmode string) (s string, err error) {
 	if len(strings.TrimSpace(host)) == 0 {
@@ -87,7 +88,11 @@ func CreateStorage(host, user, dbname, sslmode string) error {
 	if err != nil {
 		return err
 	}
-	return createAccountsTable(userConnect)
+	err = createAccountsTable(userConnect)
+	if err != nil {
+		return err
+	}
+	return createBalancesTable(userConnect)
 }
 
 func createDatabase(connection, name, owner string) error {
@@ -123,8 +128,24 @@ func createAccountsTable(connection string) error {
 	currency char(3) NOT NULL,
 	opened timestamp with time zone NOT NULL,
 	closed timestamp with time zone,
-	deleted timestamp with time zone
-);`)
+	deleted timestamp with time zone);`)
+	return err
+}
+
+func createBalancesTable(connection string) error {
+	db, err := open(connection)
+	if err != nil {
+		return err
+	}
+	query := fmt.Sprintf(`CREATE TABLE %s (
+	%s SERIAL PRIMARY KEY,
+	%s timestamp with time zone NOT NULL,
+	%s bigint NOT NULL);`, balancesTable,
+		balancesFieldID,
+		balancesFieldTime,
+		balancesFieldAmount)
+	defer nonReturningCloseDB(db)
+	_, err = db.Exec(query)
 	return err
 }
 
@@ -157,6 +178,15 @@ func (s *postgres) Available() bool {
 
 func (s postgres) Close() error {
 	return s.db.Close()
+}
+
+// queryUint will scan query a queryString against the postgres and attempt to
+// scan a uint from the first value in the results
+func queryUint(pg postgres, query string, values ...interface{}) (*uint, error) {
+	row := pg.db.QueryRow(query, values...)
+	id := new(uint)
+	err := row.Scan(id)
+	return id, err
 }
 
 func nonReturningCloseDB(db *sql.DB) {

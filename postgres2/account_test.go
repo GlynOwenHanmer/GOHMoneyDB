@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/glynternet/go-accounting-storage"
-	"github.com/glynternet/go-accounting-storage/postgres2"
 	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-money/common"
 	"github.com/glynternet/go-money/currency"
@@ -15,10 +14,9 @@ import (
 )
 
 func Test_SelectAccounts(t *testing.T) {
-	createTestDB(t)
+	store := createTestDB(t)
 	defer deleteTestDB(t)
-	store := prepareTestDB(t)
-	defer nonReturningClose(t, store)
+	defer nonReturningCloseStorage(t, store)
 	accounts, err := store.SelectAccounts()
 	common.FatalIfError(t, err, "selecting accounts")
 	if !assert.NotNil(t, accounts) {
@@ -29,13 +27,9 @@ func Test_SelectAccounts(t *testing.T) {
 }
 
 func Test_CreateAccount(t *testing.T) {
-	createTestDB(t)
+	store := createTestDB(t)
 	defer deleteTestDB(t)
-	userCS, err := postgres2.NewConnectionString(host, user, testDBName, ssl)
-	assert.Nil(t, err)
-	store, err := postgres2.New(userCS)
-	defer nonReturningClose(t, store)
-	assert.Nil(t, err)
+	defer nonReturningCloseStorage(t, store)
 	numOfAccounts := 10
 	as := newTestAccounts(t, numOfAccounts)
 	for _, a := range as {
@@ -307,12 +301,19 @@ func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
 //	assert.Equal(t, false, equal)
 //}
 //
-func newTestAccount(t *testing.T) account.Account {
+func newTestAccountOpen(t *testing.T) account.Account {
 	c, err := currency.NewCode("EUR")
 	common.FatalIfError(t, err, "creating currency code")
 	a, err := account.New("TEST ACCOUNT", *c, time.Now())
 	common.FatalIfError(t, err, "creating account")
 	return *a
+}
+
+func newTestDBAccountOpen(t *testing.T, s storage.Storage) storage.Account {
+	a := newTestAccountOpen(t)
+	dba, err := s.InsertAccount(a)
+	common.FatalIfError(t, err, "inserting account for testing")
+	return *dba
 }
 
 // newTestAccounts creates an account with a random currency and random name
@@ -331,7 +332,7 @@ func newTestAccounts(t *testing.T, count int) []account.Account {
 
 //
 //func newTestDBAccount(t *testing.T, db *sql.DB) moneypostgres.Account {
-//	account, err := moneypostgres.CreateAccount(db, newTestAccount())
+//	account, err := moneypostgres.CreateAccount(db, newTestAccountOpen())
 //	common.FatalIfError(t, err, "Error creating account for testing")
 //	return *account
 //}

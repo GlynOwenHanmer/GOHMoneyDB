@@ -36,9 +36,7 @@ func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 }
 
 func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
-	row := pg.db.QueryRow(queryInsertAccount, a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
-	id := new(uint)
-	err := row.Scan(id)
+	id, err := queryUint(pg, queryInsertAccount, a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
 	if err != nil {
 		return nil, err
 	}

@@ -22,13 +22,13 @@ type AccountBalances struct {
 }
 
 func main() {
-	oldCS, err := postgres.NewConnectionString(host, user, oldDBName, ssl)
-	if err != nil {
-		log.Fatalf("could not create connection string: %v", err)
-	}
+	oldCS := postgres.NewConnectionString(host, user, oldDBName, ssl)
 	old, err := postgres.New(oldCS)
 	if err != nil {
 		log.Fatalf("could not create old store: %v", err)
+	}
+	if !old.Available() {
+		log.Fatalf("storage is not available")
 	}
 	oldAs, err := old.SelectAccounts()
 	if err != nil {
@@ -41,10 +41,7 @@ func main() {
 		log.Fatalf("error creating new DB: %v", err)
 	}
 	defer postgres2.DeleteStorage(host, user, newDBName, ssl)
-	newCS, err := postgres.NewConnectionString(host, user, newDBName, ssl)
-	if err != nil {
-		log.Fatalf("could not create connection string: %v", err)
-	}
+	newCS := postgres.NewConnectionString(host, user, newDBName, ssl)
 	var oldAbs []AccountBalances
 	for _, oa := range *oldAs {
 		bs, err := old.SelectAccountBalances(oa)

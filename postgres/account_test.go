@@ -360,13 +360,3 @@ func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
 //	common.FatalIfError(t, err, "Error creating account for testing")
 //	return *account
 //}
-
-func nonReturningCloseStorage(t *testing.T, s storage.Storage) {
-	if s == nil {
-		t.Errorf("Attempted to close Storage but it was nil.")
-		return
-	}
-	if err := s.Close(); err != nil {
-		t.Errorf("Error closing Storage: %v", err)
-	}
-}
