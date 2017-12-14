@@ -22,13 +22,11 @@ const (
 )
 
 func TestNewConnectionString(t *testing.T) {
-	c, err := postgres.NewConnectionString("", "name", "", "")
-	assert.Nil(t, err)
+	c := postgres.NewConnectionString("", "name", "", "")
 	assert.NotNil(t, c)
 	assert.Equal(t, "user=name", c)
 
-	c, err = postgres.NewConnectionString("localhost", "user", "dbname", "disable")
-	assert.Nil(t, err)
+	c = postgres.NewConnectionString("localhost", "user", "dbname", "disable")
 	assert.NotNil(t, c)
 	expected := map[string]string{
 		"host":    "localhost",
@@ -55,7 +53,6 @@ func TestNewConnectionString(t *testing.T) {
 // prepareTestDB prepares a DB connection to the test DB and return it, if possible, with any errors that occurred whilst preparing the connection.
 func prepareTestDB(t *testing.T) storage.Storage {
 	cs := postgres.NewConnectionString(host, user, testDBName, ssl)
-	common.FatalIfError(t, err, "Error creating connection string for storage access")
 	db, err := postgres.New(cs)
 	common.FatalIfError(t, err, "Error creating DB connection")
 	return db

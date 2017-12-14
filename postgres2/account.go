@@ -3,8 +3,6 @@ package postgres2
 import (
 	"database/sql"
 	"fmt"
-	"io"
-	"log"
 	"time"
 
 	"github.com/glynternet/go-accounting-storage"
@@ -201,7 +199,7 @@ func queryAccounts(db *sql.DB, queryString string, values ...interface{}) (*stor
 	if err != nil {
 		return nil, err
 	}
-	defer nonReturningClose(rows)
+	defer nonReturningCloseRows(rows)
 	return scanRowsForAccounts(rows)
 }
 
@@ -325,13 +323,3 @@ func scanRowsForAccounts(rows *sql.Rows) (*storage.Accounts, error) {
 //	}
 //	return err
 //}
-
-func nonReturningClose(c io.Closer) {
-	if c == nil {
-		log.Printf("Attempted to close Closer but it was nil.")
-		return
-	}
-	if err := c.Close(); err != nil {
-		log.Printf("Error closing postgres: %v", err)
-	}
-}

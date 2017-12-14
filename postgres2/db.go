@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"strings"
+
+	"github.com/glynternet/go-accounting-storage"
 )
 
 const driver = "postgres"
@@ -189,11 +191,29 @@ func queryUint(pg postgres, query string, values ...interface{}) (*uint, error) 
 	return id, err
 }
 
+func nonReturningClose(c io.Closer, name string) {
+	var nameInsert string
+	if name != "" {
+		nameInsert = fmt.Sprintf("(%s) ", name)
+	}
+	if c == nil {
+		log.Printf("Attempted to close io.Closer %sbut it was nil.", nameInsert)
+		return
+	}
+	err := c.Close()
+	if err != nil {
+		log.Printf("Error closing io.Closer %s%v", nameInsert, c)
+	}
+}
+
 func nonReturningCloseDB(db *sql.DB) {
-	if db == nil {
-		log.Printf("Attempted to close db but it was nil.")
-	}
-	if err := db.Close(); err != nil {
-		log.Printf("Error closing Closer: %s", err)
-	}
+	nonReturningClose(db, "DB")
+}
+
+func nonReturningCloseRows(rows *sql.Rows) {
+	nonReturningClose(rows, "Rows")
+}
+
+func nonReturningCloseStorage(s storage.Storage) {
+	nonReturningClose(s, "Storage")
 }

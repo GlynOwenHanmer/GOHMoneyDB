@@ -1,4 +1,4 @@
-package postgres2_test
+package postgres2
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 func Test_SelectAccounts(t *testing.T) {
 	store := createTestDB(t)
 	defer deleteTestDB(t)
-	defer nonReturningCloseStorage(t, store)
+	defer nonReturningCloseStorage(store)
 	accounts, err := store.SelectAccounts()
 	common.FatalIfError(t, err, "selecting accounts")
 	if !assert.NotNil(t, accounts) {
@@ -29,7 +29,7 @@ func Test_SelectAccounts(t *testing.T) {
 func Test_CreateAccount(t *testing.T) {
 	store := createTestDB(t)
 	defer deleteTestDB(t)
-	defer nonReturningCloseStorage(t, store)
+	defer nonReturningCloseStorage(store)
 	numOfAccounts := 10
 	as := newTestAccounts(t, numOfAccounts)
 	for _, a := range as {

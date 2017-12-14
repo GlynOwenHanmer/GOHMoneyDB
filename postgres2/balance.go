@@ -21,16 +21,25 @@ const (
 )
 
 var (
-	balancesSelectFields                    = fmt.Sprintf("%s, %s, %s", balancesFieldID, balancesFieldTime, balancesFieldAmount)
-	balancesQuerySelectBalancesForAccountId = fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 ORDER BY %s ASC, ID ASC",
+	balancesSelectFields = fmt.Sprintf(
+		"%s, %s, %s",
+		balancesFieldID, balancesFieldTime, balancesFieldAmount)
+	balancesSelectPrefix = fmt.Sprintf(
+		`SELECT %s FROM %s WHERE `,
 		balancesSelectFields,
-		balancesTable,
+		balancesTable)
+	balancesQuerySelectBalanceByID = fmt.Sprintf(
+		`%s%s = $1;`,
+		balancesSelectPrefix,
+		balancesFieldID)
+	balancesQuerySelectBalancesForAccountId = fmt.Sprintf(
+		"%s%s = $1 ORDER BY %s ASC, %s ASC;",
+		balancesSelectPrefix,
 		balancesFieldAccountID,
 		balancesFieldTime,
-	)
+		balancesFieldAccountID)
 	balancesQueryInsertBalance = fmt.Sprintf(
-		`INSERT INTO %s (%s, %s) VALUES ($1, $2) returning %s`,
+		`INSERT INTO %s (%s, %s) VALUES ($1, $2) returning %s;`,
 		balancesTable,
 		balancesFieldTime,
 		balancesFieldAmount,
@@ -47,6 +56,10 @@ func (pg postgres) SelectAccountBalances(a storage.Account) (*storage.Balances, 
 //The Balances are sorted by chronological order then by the id of the Balance in the DB
 func (pg postgres) selectBalancesForAccountID(accountID uint) (*storage.Balances, error) {
 	return queryBalances(pg.db, balancesQuerySelectBalancesForAccountId, accountID)
+}
+
+func (pg postgres) selectBalanceByID(id uint) (*storage.Balance, error) {
+	return queryBalance(pg.db, balancesQuerySelectBalanceByID, id)
 }
 
 func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage.Balance, error) {
@@ -83,7 +96,7 @@ func queryBalances(db *sql.DB, queryString string, values ...interface{}) (*stor
 	if err != nil {
 		return nil, err
 	}
-	defer nonReturningClose(rows)
+	defer nonReturningCloseRows(rows)
 	return scanRowsForBalances(rows)
 }
 

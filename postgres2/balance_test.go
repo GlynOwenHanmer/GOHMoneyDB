@@ -1,4 +1,4 @@
-package postgres2_test
+package postgres2
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 func TestPostgres_InsertBalance(t *testing.T) {
 	s := createTestDB(t)
 	defer deleteTestDB(t)
-	defer nonReturningCloseStorage(t, s)
+	defer nonReturningCloseStorage(s)
 
 	a := newTestDBAccountOpen(t, s)
 
@@ -37,9 +37,13 @@ func TestPostgres_InsertBalance(t *testing.T) {
 		b := newTestBalance(t, test.Time, balance.Amount(test.int))
 		dbb, err := s.InsertBalance(a, b)
 		assert.Equal(t, test.error, err != nil, "[test: %d] %v", i, err)
-		if err == nil {
-			assert.Equal(t, b, dbb.Balance)
+		if err != nil {
+			return
 		}
+		assert.Equal(t, b, dbb.Balance)
+		dbbb, err := s.(*postgres).selectBalanceByID(dbb.ID)
+		common.FatalIfError(t, err, "selecting balance to check against inserted")
+		assert.Equal(t, dbb, dbbb)
 	}
 }
 
