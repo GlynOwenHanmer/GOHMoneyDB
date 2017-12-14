@@ -28,21 +28,23 @@ var (
 		`SELECT %s FROM %s WHERE `,
 		balancesSelectFields,
 		balancesTable)
-	balancesQuerySelectBalanceByID = fmt.Sprintf(
+	balancesSelectBalanceByID = fmt.Sprintf(
 		`%s%s = $1;`,
 		balancesSelectPrefix,
 		balancesFieldID)
-	balancesQuerySelectBalancesForAccountId = fmt.Sprintf(
+	balancesSelectBalancesForAccountId = fmt.Sprintf(
 		"%s%s = $1 ORDER BY %s ASC, %s ASC;",
 		balancesSelectPrefix,
 		balancesFieldAccountID,
 		balancesFieldTime,
 		balancesFieldAccountID)
-	balancesQueryInsertBalance = fmt.Sprintf(
-		`INSERT INTO %s (%s, %s) VALUES ($1, $2) returning %s;`,
+	balancesInsertFields = fmt.Sprintf(
+		"%s, %s, %s",
+		balancesFieldAccountID, balancesFieldTime, balancesFieldAmount)
+	balancesInsertBalance = fmt.Sprintf(
+		`INSERT INTO %s (%s) VALUES ($1, $2, $3) returning %s;`,
 		balancesTable,
-		balancesFieldTime,
-		balancesFieldAmount,
+		balancesInsertFields,
 		balancesFieldID)
 )
 
@@ -55,11 +57,11 @@ func (pg postgres) SelectAccountBalances(a storage.Account) (*storage.Balances, 
 //selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account ID number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
 //The Balances are sorted by chronological order then by the id of the Balance in the DB
 func (pg postgres) selectBalancesForAccountID(accountID uint) (*storage.Balances, error) {
-	return queryBalances(pg.db, balancesQuerySelectBalancesForAccountId, accountID)
+	return queryBalances(pg.db, balancesSelectBalancesForAccountId, accountID)
 }
 
 func (pg postgres) selectBalanceByID(id uint) (*storage.Balance, error) {
-	return queryBalance(pg.db, balancesQuerySelectBalanceByID, id)
+	return queryBalance(pg.db, balancesSelectBalanceByID, id)
 }
 
 func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage.Balance, error) {
@@ -67,7 +69,7 @@ func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage
 	if err != nil {
 		return nil, err
 	}
-	id, err := queryUint(pg, balancesQueryInsertBalance, b.Date, b.Amount)
+	id, err := queryUint(pg, balancesInsertBalance, a.ID, b.Date, b.Amount)
 	if err != nil {
 		return nil, err
 	}

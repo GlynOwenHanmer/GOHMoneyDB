@@ -141,9 +141,12 @@ func createBalancesTable(connection string) error {
 	}
 	query := fmt.Sprintf(`CREATE TABLE %s (
 	%s SERIAL PRIMARY KEY,
+	%s integer NOT NULL,
 	%s timestamp with time zone NOT NULL,
-	%s bigint NOT NULL);`, balancesTable,
+	%s bigint NOT NULL);`,
+		balancesTable,
 		balancesFieldID,
+		balancesFieldAccountID,
 		balancesFieldTime,
 		balancesFieldAmount)
 	defer nonReturningCloseDB(db)

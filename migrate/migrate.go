@@ -34,7 +34,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not select old accounts: %v", err)
 	}
-	_ = postgres2.DeleteStorage(host, user, newDBName, ssl)
+	err = postgres2.DeleteStorage(host, user, newDBName, ssl)
+	if err != nil {
+		log.Printf("error deleting storage: %v", err)
+	}
 	//adminCS, err := postgres2.NewConnectionString(host, user, "", ssl)
 	err = postgres2.CreateStorage(host, user, newDBName, ssl)
 	if err != nil {
@@ -65,7 +68,9 @@ func main() {
 		for _, b := range ab.Balances {
 			newB, err := new.InsertBalance(*newA, b.Balance)
 			if err != nil {
-				log.Fatalf("error inserting new balance: %v", err)
+				log.Fatalf(
+					"error inserting new balance: %v - Account: %+v - Balance: %+v",
+					err, *newA, b.Balance)
 			}
 			newBs = append(newBs, *newB)
 		}
