@@ -50,7 +50,7 @@ func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
 		account := accounts[i]
 		nextAccount := accounts[i+1]
 		switch {
-		case account.ID > nextAccount.ID:
+		case account.ID >= nextAccount.ID:
 			var message bytes.Buffer
 			fmt.Fprintf(&message, "Accounts not returned sorted by ID. ID %d appears before %d.\n", account.ID, nextAccount.ID)
 			fmt.Fprintf(&message, "accounts[%d]: %s", i, account)
@@ -75,7 +75,6 @@ func newTestDBAccountOpen(t *testing.T, s storage.Storage) storage.Account {
 	return *dba
 }
 
-// newTestAccounts creates an account with a random currency and random name
 func newTestAccounts(t *testing.T, count int) []account.Account {
 	as := make([]account.Account, count)
 	for i := 0; i < count; i++ {
