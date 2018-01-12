@@ -17,7 +17,7 @@ type Account struct {
 
 func DeletedAt(t time.Time) func(*Account) error {
 	return func(a *Account) error {
-		a.deletedAt = gtime.NullTime{Valid:true, Time:t}
+		a.deletedAt = gtime.NullTime{Valid: true, Time: t}
 		return nil
 	}
 }
@@ -29,6 +29,9 @@ type Accounts []Account
 func (a Account) Equal(b Account) (bool, error) {
 	if a.ID != b.ID {
 		return false, nil
+	}
+	if a.Account == nil || b.Account == nil {
+		return false, errors.New("nil account.Account")
 	}
 	if !a.Account.Equal(b.Account) {
 		return false, nil
