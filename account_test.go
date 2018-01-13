@@ -74,4 +74,23 @@ func TestAccount_Equal(t *testing.T) {
 			assert.Equal(t, test.equal, equal)
 		})
 	}
+
+	t.Run("unequal deletedAt", func(t *testing.T) {
+		a := Account{Account: mockAccountAccount{equal: true}}
+		b := Account{Account: mockAccountAccount{equal: true}, deletedAt: gtime.NullTime{Valid: true}}
+		var equal bool
+		equal, err := a.Equal(b)
+		assert.True(t, !equal)
+		assert.Error(t, err, "accounts are equal but one has been deleted")
+	})
+}
+
+func TestDeletedAt(t *testing.T) {
+	var a Account
+	assert.Equal(t, gtime.NullTime{}, a.deletedAt)
+
+	time := time.Date(1000, 0, 0, 0, 0, 0, 0, time.UTC)
+	err := DeletedAt(time)(&a)
+	assert.Nil(t, err)
+	assert.Equal(t, gtime.NullTime{Valid: true, Time: time}, a.deletedAt)
 }
