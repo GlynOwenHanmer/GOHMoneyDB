@@ -2,14 +2,12 @@ package postgres2
 
 import (
 	"database/sql"
-	"time"
-
 	"fmt"
-
-	"errors"
+	"time"
 
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/balance"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -67,11 +65,11 @@ func (pg postgres) selectBalanceByID(id uint) (*storage.Balance, error) {
 func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage.Balance, error) {
 	err := a.ValidateBalance(b)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "validating balance")
 	}
 	id, err := queryUint(pg, balancesInsertBalance, a.ID, b.Date, b.Amount)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "querying Uint")
 	}
 	return &storage.Balance{
 		ID:      *id,
@@ -82,7 +80,7 @@ func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage
 func queryBalance(db *sql.DB, queryString string, values ...interface{}) (*storage.Balance, error) {
 	bs, err := queryBalances(db, queryString, values...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "querying balances")
 	}
 	var b *storage.Balance
 	if len(*bs) > 1 {
@@ -96,7 +94,7 @@ func queryBalance(db *sql.DB, queryString string, values ...interface{}) (*stora
 func queryBalances(db *sql.DB, queryString string, values ...interface{}) (*storage.Balances, error) {
 	rows, err := db.Query(queryString, values...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "querying db")
 	}
 	defer nonReturningCloseRows(rows)
 	return scanRowsForBalances(rows)
@@ -111,17 +109,17 @@ func scanRowsForBalances(rows *sql.Rows) (bs *storage.Balances, err error) {
 		var amount float64
 		err = rows.Scan(&ID, &date, &amount)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "scanning rows")
 		}
 		var innerB *balance.Balance
 		innerB, err = balance.New(date, balance.Amount(int(amount)))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "creating new balance from scan results")
 		}
 		*bs = append(*bs, storage.Balance{ID: ID, Balance: *innerB})
 	}
 	if err == nil {
-		err = rows.Err()
+		err = errors.Wrap(rows.Err(), "rows error: ")
 	}
 	return
 }
