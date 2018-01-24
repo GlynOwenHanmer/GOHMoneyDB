@@ -100,6 +100,10 @@ func createTestDB(t *testing.T) storage.Storage {
 	return db
 }
 
+func deleteTestDBIgnorantly(t *testing.T) {
+	_ = DeleteStorage(host, user, testDBName, ssl)
+}
+
 func deleteTestDB(t *testing.T) {
 	err := DeleteStorage(host, user, testDBName, ssl)
 	common.FatalIfError(t, err, "Error deleting storage")
