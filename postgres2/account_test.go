@@ -47,7 +47,7 @@ func Test_CreateAccount(t *testing.T) {
 	assert.Len(t, *accounts, numOfAccounts)
 }
 
-func Test_SelectAccount(t *testing.T) {
+func Test_InsertAccount_SelectAccount(t *testing.T) {
 	deleteTestDBIgnorantly(t)
 	store := createTestDB(t)
 	defer deleteTestDB(t)
@@ -92,7 +92,7 @@ func checkAccountsSortedByIdAscending(t *testing.T, accounts storage.Accounts) {
 func newTestAccount(t *testing.T, options ...account.Option) account.Account {
 	c, err := currency.NewCode("EUR")
 	common.FatalIfError(t, err, "creating currency code")
-	a, err := account.New("TEST ACCOUNT", *c, time.Now().Round(time.Millisecond), options...)
+	a, err := account.New("TEST ACCOUNT", *c, time.Now(), options...)
 	common.FatalIfError(t, err, "creating account")
 	return *a
 }
@@ -104,6 +104,10 @@ func newTestDBAccountOpen(t *testing.T, s storage.Storage) storage.Account {
 	return *dba
 }
 
+// newTestAccounts creates a given number of account.Account.
+// Each account will have a different Currency Code, its index formatted as C%02D.
+// To create only accounts with the same index, use another function.
+// TODO: extend this to take currencyCount and perCurrencyCount? Where a given number of accounts per currency are generated, and a given number of currencies are generated.
 func newTestAccounts(t *testing.T, count int, options ...account.Option) []account.Account {
 	as := make([]account.Account, count)
 	for i := 0; i < count; i++ {
