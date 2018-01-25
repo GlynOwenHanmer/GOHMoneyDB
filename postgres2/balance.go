@@ -35,7 +35,7 @@ var (
 		balancesSelectPrefix,
 		balancesFieldID)
 
-	balancesSelectBalancesForAccountId = fmt.Sprintf(
+	balancesSelectBalancesForAccountID = fmt.Sprintf(
 		"%s%s = $1 ORDER BY %s ASC, %s ASC;",
 		balancesSelectPrefix,
 		balancesFieldAccountID,
@@ -64,7 +64,7 @@ func (pg postgres) SelectAccountBalances(a storage.Account) (*storage.Balances, 
 //selectBalancesForAccount returns all Balance items, as a single Balances item, for a given account ID number in the given database, along with any errors that occur whilst attempting to retrieve the Balances.
 //The Balances are sorted by chronological order then by the id of the Balance in the DB
 func (pg postgres) selectBalancesForAccountID(accountID uint) (*storage.Balances, error) {
-	return queryBalances(pg.db, balancesSelectBalancesForAccountId, accountID)
+	return queryBalances(pg.db, balancesSelectBalancesForAccountID, accountID)
 }
 
 // SelectBalanceByAccountAndID selects a balance with a given ID within a given account.

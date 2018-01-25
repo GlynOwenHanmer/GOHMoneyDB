@@ -24,7 +24,7 @@ func Test_SelectAccounts(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Len(t, *accounts, 0)
-	checkAccountsSortedByIdAscending(t, *accounts)
+	checkAccountsSortedByIDAscending(t, *accounts)
 }
 
 func TestPostgres_InsertAccount(t *testing.T) {
@@ -74,7 +74,7 @@ func Test_InsertAccount_SelectAccount(t *testing.T) {
 	}
 }
 
-func checkAccountsSortedByIdAscending(t *testing.T, accounts storage.Accounts) {
+func checkAccountsSortedByIDAscending(t *testing.T, accounts storage.Accounts) {
 	for i := 0; i+1 < len(accounts); i++ {
 		account := accounts[i]
 		nextAccount := accounts[i+1]
