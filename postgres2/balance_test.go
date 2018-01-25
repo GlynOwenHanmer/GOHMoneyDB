@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/balance"
 	"github.com/glynternet/go-money/common"
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,7 @@ import (
 
 // TODO: Select account balances
 
-func TestPostgres_InsertBalance(t *testing.T) {
+func TestPostgres_InsertBalance_selectBalanceByID(t *testing.T) {
 	s := createTestDB(t)
 	defer deleteTestDB(t)
 	defer nonReturningCloseStorage(s)
@@ -49,8 +50,41 @@ func TestPostgres_InsertBalance(t *testing.T) {
 	}
 }
 
+func TestPostgres_SelectAccountBalances(t *testing.T) {
+	deleteTestDBIgnorantly(t)
+	store := createTestDB(t)
+	defer deleteTestDB(t)
+	defer nonReturningCloseStorage(store)
+	count := 10
+	as := newTestInsertedStorageAccounts(t, store, count)
+	for i := 0; i < count; i++ {
+		numBalances := i
+		inserted := make([]storage.Balance, numBalances)
+		for j, b := range newTestBalances(t, numBalances, time.Now(), time.Hour) {
+			err := balance.Amount(j)(&b)
+			common.FatalIfError(t, err, "setting balance amount")
+			dba, err := store.InsertBalance(*as[i], b)
+			common.FatalIfError(t, err, "inserting Balance")
+			inserted[j] = *dba
+		}
+		returned, err := store.SelectAccountBalances(*as[i])
+		common.FatalIfError(t, err, "selecting account balances")
+		for j := 0; j < i; j++ {
+			assert.Equal(t, inserted[j], (*returned)[j])
+		}
+	}
+}
+
 func newTestBalance(t *testing.T, time time.Time, os ...balance.Option) balance.Balance {
 	b, err := balance.New(time, os...)
 	common.FatalIfError(t, err, "creating test balance")
 	return *b
+}
+
+func newTestBalances(t *testing.T, count int, startTime time.Time, interval time.Duration, os ...balance.Option) []balance.Balance {
+	bs := make([]balance.Balance, count)
+	for i := 0; i < count; i++ {
+		bs[i] = newTestBalance(t, startTime.Add(time.Duration(i)*interval), os...)
+	}
+	return bs
 }

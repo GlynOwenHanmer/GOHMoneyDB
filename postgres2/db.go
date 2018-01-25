@@ -185,15 +185,6 @@ func (s postgres) Close() error {
 	return s.db.Close()
 }
 
-// queryUint will scan query a queryString against the postgres and attempt to
-// scan a uint from the first value in the results
-func queryUint(pg postgres, query string, values ...interface{}) (*uint, error) {
-	row := pg.db.QueryRow(query, values...)
-	id := new(uint)
-	err := row.Scan(id)
-	return id, err
-}
-
 func nonReturningClose(c io.Closer, name string) {
 	var nameInsert string
 	if name != "" {

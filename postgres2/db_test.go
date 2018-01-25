@@ -90,9 +90,9 @@ func Test_createTestDB(t *testing.T) {
 //todo createTestDB should be given a base name for a db, which it should append a timestamp onto.
 // createTestDB prepares a DB connection to the test DB and return it, if possible, with any errors that occurred whilst preparing the connection.
 func createTestDB(t *testing.T) storage.Storage {
-	cs := adminConnectionString(t)
 	err := CreateStorage(host, user, testDBName, ssl)
 	common.FatalIfError(t, err, "Error creating storage ")
+	var cs string
 	cs, err = NewConnectionString(host, user, testDBName, ssl)
 	common.FatalIfError(t, err, "Error creating connection string for storage access")
 	db, err := New(cs)

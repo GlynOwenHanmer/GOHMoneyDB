@@ -27,7 +27,7 @@ func Test_SelectAccounts(t *testing.T) {
 	checkAccountsSortedByIdAscending(t, *accounts)
 }
 
-func Test_CreateAccount(t *testing.T) {
+func TestPostgres_InsertAccount(t *testing.T) {
 	deleteTestDBIgnorantly(t)
 	store := createTestDB(t)
 	defer deleteTestDB(t)
@@ -37,7 +37,13 @@ func Test_CreateAccount(t *testing.T) {
 	for _, a := range as {
 		dba, err := store.InsertAccount(a)
 		common.FatalIfError(t, err, "inserting account")
-		assert.Equal(t, a, dba.Account)
+		assert.Equal(t, a.Name(), dba.Name())
+		assert.Equal(t, a.CurrencyCode(), dba.CurrencyCode())
+		assert.True(t, a.Opened().Sub(dba.Opened()) < time.Millisecond)
+		assert.Equal(t, a.Closed().Valid, dba.Closed().Valid)
+		if a.Closed().Valid {
+			assert.True(t, a.Closed().Time.Sub(dba.Closed().Time) < time.Millisecond)
+		}
 	}
 	accounts, err := store.SelectAccounts()
 	common.FatalIfError(t, err, "selecting accounts")
@@ -58,19 +64,13 @@ func Test_InsertAccount_SelectAccount(t *testing.T) {
 	for _, a := range append(asOpen, asClosed...) {
 		inserted, err := store.InsertAccount(a)
 		common.FatalIfError(t, err, "inserting account")
-		assert.Equal(t, a, inserted.Account)
 		dbas = append(dbas, inserted)
 		selected, err := store.SelectAccount(inserted.ID)
 		assert.NoError(t, err)
-		_, err = inserted.Equal(*selected)
+		assert.Equal(t, inserted, selected)
+		equal, err := inserted.Equal(*selected)
 		assert.NoError(t, err)
-		assert.Equal(t, inserted.ID, selected.ID)
-		assert.Equal(t, inserted.CurrencyCode(), selected.CurrencyCode())
-		assert.True(t, inserted.Opened().Sub(selected.Opened()) < time.Millisecond)
-		assert.Equal(t, inserted.Closed().Valid, selected.Closed().Valid)
-		if inserted.Closed().Valid {
-			assert.True(t, inserted.Closed().Time.Sub(selected.Closed().Time) < time.Millisecond)
-		}
+		assert.True(t, equal)
 	}
 }
 
@@ -82,8 +82,8 @@ func checkAccountsSortedByIdAscending(t *testing.T, accounts storage.Accounts) {
 		case account.ID >= nextAccount.ID:
 			var message bytes.Buffer
 			fmt.Fprintf(&message, "Accounts not returned sorted by ID. ID %d appears before %d.\n", account.ID, nextAccount.ID)
-			fmt.Fprintf(&message, "accounts[%d]: %s", i, account)
-			fmt.Fprintf(&message, "accounts[%d]: %s", i+1, nextAccount)
+			fmt.Fprintf(&message, "accounts[%d]: %v", i, account)
+			fmt.Fprintf(&message, "accounts[%d]: %v", i+1, nextAccount)
 			t.Errorf(message.String())
 		}
 	}
@@ -119,4 +119,17 @@ func newTestAccounts(t *testing.T, count int, options ...account.Option) []accou
 		as[i] = *a
 	}
 	return as
+}
+
+// newTestInsertedStorageAccounts is the same as newTestAccounts except that
+// it inserts each account into the given storage
+func newTestInsertedStorageAccounts(t *testing.T, s storage.Storage, count int, options ...account.Option) []*storage.Account {
+	as := newTestAccounts(t, count, options...)
+	dbas := make([]*storage.Account, count)
+	for i := 0; i < count; i++ {
+		dba, err := s.InsertAccount(as[i])
+		common.FatalIfError(t, err, "inserting account")
+		dbas[i] = dba
+	}
+	return dbas
 }

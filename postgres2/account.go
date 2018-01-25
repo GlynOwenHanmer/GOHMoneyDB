@@ -23,11 +23,40 @@ const (
 )
 
 var (
-	fieldsInsert        = fmt.Sprintf("%s, %s, %s, %s", fieldName, fieldOpened, fieldClosed, fieldCurrency)
-	fieldsSelect        = fmt.Sprintf("%s, %s, %s, %s, %s, %s", fieldID, fieldName, fieldOpened, fieldClosed, fieldCurrency, fieldDeleted)
-	querySelectAccounts = fmt.Sprintf("SELECT %s FROM %s WHERE %s IS NULL ORDER BY %s ASC;", fieldsSelect, table, fieldDeleted, fieldID)
-	querySelectAccount  = fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1 AND %s IS NULL;", fieldsSelect, table, fieldID, fieldDeleted)
-	queryInsertAccount  = fmt.Sprintf(`INSERT INTO accounts (%s) VALUES ($1, $2, $3, $4) returning %s`, fieldsInsert, fieldID)
+	fieldsInsert = fmt.Sprintf(
+		"%s, %s, %s, %s",
+		fieldName,
+		fieldOpened,
+		fieldClosed,
+		fieldCurrency)
+
+	fieldsSelect = fmt.Sprintf(
+		"%s, %s, %s, %s, %s, %s",
+		fieldID,
+		fieldName,
+		fieldOpened,
+		fieldClosed,
+		fieldCurrency,
+		fieldDeleted)
+
+	querySelectAccounts = fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s IS NULL ORDER BY %s ASC;",
+		fieldsSelect,
+		table,
+		fieldDeleted,
+		fieldID)
+
+	querySelectAccount = fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 AND %s IS NULL;",
+		fieldsSelect,
+		table,
+		fieldID,
+		fieldDeleted)
+
+	queryInsertAccount = fmt.Sprintf(
+		`INSERT INTO accounts (%s) VALUES ($1, $2, $3, $4) returning %s`,
+		fieldsInsert,
+		fieldsSelect)
 )
 
 // SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors that occurred whilst attempting to retrieve the Accounts.
@@ -43,11 +72,8 @@ func (pg postgres) SelectAccount(id uint) (*storage.Account, error) {
 // InsertAccount inserts an account.Account in the storage backend and returns it.
 // InsertAccount rounds time to the nearest millisecond to avoid any discrepancies when it comes to how accurate the DB can store a time
 func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
-	id, err := queryUint(pg, queryInsertAccount, a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
-	if err != nil {
-		return nil, errors.Wrap(err, "querying Uint")
-	}
-	return &storage.Account{ID: *id, Account: a}, err
+	dba, err := queryAccount(pg.db, queryInsertAccount, a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
+	return dba, errors.Wrap(err, "querying Account")
 }
 
 func queryAccount(db *sql.DB, queryString string, values ...interface{}) (*storage.Account, error) {
