@@ -26,7 +26,7 @@ func (a mockAccountAccount) IsOpen() (b bool)                              { ret
 func (a mockAccountAccount) CurrencyCode() (c currency.Code)               { return }
 func (a mockAccountAccount) ValidateBalance(b balance.Balance) (err error) { return }
 func (a mockAccountAccount) Equal(b account.Account) bool                  { return a.equal }
-func (a mockAccountAccount) MarshalJSON() ([]byte, error)                  { return []byte(a.json), nil }
+func (a *mockAccountAccount) MarshalJSON() ([]byte, error)                 { return []byte(a.json), nil }
 
 func TestAccount_Equal(t *testing.T) {
 	// if account a is true, account.Account.Equal will evaluate to true
