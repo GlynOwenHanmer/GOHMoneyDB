@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO: Select account balances
-
 func TestPostgres_InsertBalance_selectBalanceByID(t *testing.T) {
 	s := createTestDB(t)
 	defer deleteTestDB(t)
