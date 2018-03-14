@@ -3,16 +3,18 @@ package postgres2
 import (
 	"bytes"
 	"database/sql"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 
 	"github.com/glynternet/go-accounting-storage"
+	"github.com/pkg/errors"
 )
 
 const driver = "postgres"
+
+// TODO: error wrapping and some refactoring in here
 
 // New returns a connection to a postgres Storage using the given connection string along with any errors that occur whilst attempting to open the connection.
 func New(connectionString string) (s *postgres, err error) {
@@ -80,21 +82,21 @@ func (w *failSafeWriter) writef(format string, args ...interface{}) {
 func CreateStorage(host, user, dbname, sslmode string) error {
 	adminConnect, err := NewConnectionString(host, user, "", sslmode)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "creating admin connection string")
 	}
 	userConnect, err := NewConnectionString(host, user, dbname, sslmode)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "creating user connection string")
 	}
 	err = createDatabase(adminConnect, dbname, user)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "creating database")
 	}
 	err = createAccountsTable(userConnect)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "creating accounts table")
 	}
-	return createBalancesTable(userConnect)
+	return errors.Wrap(createBalancesTable(userConnect), "creating balances table")
 }
 
 func createDatabase(connection, name, owner string) error {
@@ -115,13 +117,13 @@ func createDatabase(connection, name, owner string) error {
 	}
 	defer nonReturningCloseDB(db)
 	_, err = db.Exec(q.String())
-	return err
+	return errors.Wrap(err, "executing create database query")
 }
 
 func createAccountsTable(connection string) error {
 	db, err := open(connection)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "opening DB connection")
 	}
 	defer nonReturningCloseDB(db)
 	_, err = db.Exec(`CREATE TABLE accounts (
@@ -137,7 +139,7 @@ func createAccountsTable(connection string) error {
 func createBalancesTable(connection string) error {
 	db, err := open(connection)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "opening DB connection")
 	}
 	query := fmt.Sprintf(`CREATE TABLE %s (
 	%s SERIAL PRIMARY KEY,
@@ -151,7 +153,7 @@ func createBalancesTable(connection string) error {
 		balancesFieldAmount)
 	defer nonReturningCloseDB(db)
 	_, err = db.Exec(query)
-	return err
+	return errors.Wrap(err, "executing create Balances query")
 }
 
 func DeleteStorage(host, user, name, sslmode string) error {
