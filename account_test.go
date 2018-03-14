@@ -104,7 +104,6 @@ func TestAccount_JSONLoop(t *testing.T) {
 
 	for _, test := range []struct {
 		name  string
-		code  currency.Code
 		open  time.Time
 		close gtime.NullTime
 	}{
