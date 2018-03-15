@@ -30,6 +30,10 @@ func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 	return scanRowsForAccounts(rows)
 }
 
+func (pg *postgres) SelectAccount(u uint) (*storage.Account, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (pg *postgres) InsertAccount(a account.Account) (*storage.Account, error) {
 	return nil, errors.New("not implemented")
 }
