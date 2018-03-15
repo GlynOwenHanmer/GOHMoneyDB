@@ -62,7 +62,7 @@ func TestInsertingAndRetrievingTwoAccounts(t *testing.T) {
 		t.FailNow()
 	}
 
-	a := accountingtest.NewAccount(t, "A", accountingtest.NewCurrencyCode(t, "BTC"), time.Now())
+	a := accountingtest.NewAccount(t, "A", accountingtest.NewCurrencyCode(t, "YEN"), time.Now())
 	insertedA, err := store.InsertAccount(a)
 	common.FatalIfError(t, err, "inserting account")
 
@@ -71,11 +71,34 @@ func TestInsertingAndRetrievingTwoAccounts(t *testing.T) {
 	if !assert.Len(t, *as, 1) {
 		t.FailNow()
 	}
-	retrievedA := (*as)[0]
-	equal, err := insertedA.Equal(retrievedA)
+	selectedA := &(*as)[0]
+	equal, err := insertedA.Equal(*selectedA)
 	common.FatalIfError(t, err, "equaling inserted and retrieved")
 	if !assert.True(t, equal) {
 		t.FailNow()
+	}
+
+	selectedByIDA, err := store.SelectAccount(insertedA.ID)
+	common.FatalIfError(t, err, "selecting account by ID")
+
+	for _, as := range []struct {
+		A, B *storage.Account
+	}{
+		{
+			A: insertedA, B: selectedA,
+		},
+		{
+			A: insertedA, B: selectedByIDA,
+		},
+		{
+			A: selectedA, B: selectedByIDA,
+		},
+	} {
+		equal, err := as.A.Equal(*as.B)
+		common.FatalIfErrorf(t, err, "equalling accounts %+v", as)
+		if !assert.True(t, equal) {
+			t.FailNow()
+		}
 	}
 
 	b := accountingtest.NewAccount(t, "B", accountingtest.NewCurrencyCode(t, "EUR"), time.Now().Add(-1*time.Hour))
@@ -89,11 +112,34 @@ func TestInsertingAndRetrievingTwoAccounts(t *testing.T) {
 	if !assert.Len(t, *as, numOfAccounts) {
 		t.FailNow()
 	}
-	retrievedB := (*as)[1]
-	equal, err = insertedB.Equal(retrievedB)
+	selectedB := &(*as)[1]
+	equal, err = insertedB.Equal(*selectedB)
 	common.FatalIfError(t, err, "equaling inserted and retrieved")
 	if !assert.True(t, equal) {
 		t.FailNow()
+	}
+
+	selectedByIDB, err := store.SelectAccount(insertedB.ID)
+	common.FatalIfError(t, err, "selecting account by ID")
+
+	for _, as := range []struct {
+		A, B *storage.Account
+	}{
+		{
+			A: insertedB, B: selectedB,
+		},
+		{
+			A: insertedB, B: selectedByIDB,
+		},
+		{
+			A: selectedB, B: selectedByIDB,
+		},
+	} {
+		equal, err := as.A.Equal(*as.B)
+		common.FatalIfErrorf(t, err, "equalling accounts %+v", as)
+		if !assert.True(t, equal) {
+			t.FailNow()
+		}
 	}
 
 	equal, err = insertedA.Equal(*insertedB)
@@ -102,8 +148,8 @@ func TestInsertingAndRetrievingTwoAccounts(t *testing.T) {
 		t.FailNow()
 	}
 
-	equal, err = retrievedA.Equal(retrievedB)
-	common.FatalIfError(t, err, "equaling retrievedA and retrievedB")
+	equal, err = selectedA.Equal(*selectedB)
+	common.FatalIfError(t, err, "equaling selectedA and selectedB")
 	if !assert.False(t, equal) {
 		t.FailNow()
 	}
