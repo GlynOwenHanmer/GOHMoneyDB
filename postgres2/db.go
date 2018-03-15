@@ -99,7 +99,17 @@ func CreateStorage(host, user, dbname, sslmode string) error {
 	return errors.Wrap(createBalancesTable(userConnect), "creating balances table")
 }
 
+// TODO: functional tests
+
 func createDatabase(connection, name, owner string) error {
+	if name == "" {
+		return errors.New("no database name provided")
+	}
+
+	if owner == "" {
+		return errors.New("no owner name provided")
+	}
+
 	// When using $1 whilst creating a DB with the db driver, errors were being
 	// returned to do with the use of $ signs.
 	// So I've reverted to plain old forming a query string manually.
@@ -107,7 +117,7 @@ func createDatabase(connection, name, owner string) error {
 	w := failSafeWriter{Writer: q}
 	w.writef("CREATE DATABASE %s ", name)
 	w.writef("WITH OWNER = %s ", owner)
-	w.writef("ENCODING = 'UTF8' TABLESPACE = pg_default LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8' CONNECTION LIMIT = 10;")
+	w.writef("ENCODING = 'UTF8' TABLESPACE = pg_default LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8' CONNECTION LIMIT = 10  TEMPLATE = template0;")
 	if w.error != nil {
 		return w.error
 	}
