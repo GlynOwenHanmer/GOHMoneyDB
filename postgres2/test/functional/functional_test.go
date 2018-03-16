@@ -2,7 +2,6 @@ package functional
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -31,16 +30,14 @@ func init() {
 
 func TestMain(m *testing.M) {
 	setup()
-	code := m.Run()
-	log.Println("tearing down")
-	os.Exit(code)
+	os.Exit(m.Run())
 }
 
 func setup() {
 	const retries = 5
 	errs := make([]error, retries)
 	var i int
-	for i = 1; i <= retries; i++ {
+	for i = 0; i < retries; i++ {
 		err := postgres2.CreateStorage(
 			viper.GetString(keyDBHost),
 			viper.GetString(keyDBUser),
@@ -55,7 +52,7 @@ func setup() {
 	}
 	if errs[retries-1] != nil {
 		for i, err := range errs {
-			fmt.Printf("[retry: %02d] %v", i, err)
+			fmt.Printf("[retry: %02d] %v\n", i, err)
 		}
 	}
 }
