@@ -20,11 +20,11 @@ func Test(t *testing.T, store storage.Storage) {
 	}{
 		{
 			title: "inserting and retrieving accounts",
-			run:   TestInsertingAndRetrievingTwoAccounts,
+			run:   InsertAndRetrieveAccounts,
 		},
 		{
 			title: "inserting balances",
-			run:   TestInsertingBalances,
+			run:   InsertAndRetrieveBalances,
 		},
 	}
 	for _, test := range tests {
@@ -37,7 +37,7 @@ func Test(t *testing.T, store storage.Storage) {
 	}
 }
 
-func TestInsertingAndRetrievingTwoAccounts(t *testing.T, store storage.Storage) {
+func InsertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	as, err := store.SelectAccounts()
 	common.FatalIfError(t, err, "selecting accounts")
 
@@ -138,7 +138,7 @@ func TestInsertingAndRetrievingTwoAccounts(t *testing.T, store storage.Storage) 
 	}
 }
 
-func TestInsertingBalances(t *testing.T, store storage.Storage) {
+func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 	as := selectAccounts(t, store)
 	assert.Len(t, *as, numOfAccounts)
 
