@@ -2,7 +2,6 @@ package functional
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -26,11 +25,7 @@ const (
 func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv() // read in environment variables that match
-}
-
-func TestMain(m *testing.M) {
 	setup()
-	os.Exit(m.Run())
 }
 
 func setup() {
