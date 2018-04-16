@@ -5,30 +5,28 @@ import (
 	"testing"
 	"time"
 
+	"github.com/glynternet/go-accounting-storagetest"
 	"github.com/glynternet/go-accounting/account"
-	"github.com/glynternet/go-accounting/balance"
 	"github.com/glynternet/go-money/common"
 	"github.com/glynternet/go-money/currency"
 	gtime "github.com/glynternet/go-time"
 	"github.com/stretchr/testify/assert"
 )
 
-type mockAccountAccount struct {
-	equal bool
-	json  string
-}
-
-func (a mockAccountAccount) Name() (s string)                              { return }
-func (a mockAccountAccount) Opened() (t time.Time)                         { return }
-func (a mockAccountAccount) Closed() (nt gtime.NullTime)                   { return }
-func (a mockAccountAccount) TimeRange() (r gtime.Range)                    { return }
-func (a mockAccountAccount) IsOpen() (b bool)                              { return }
-func (a mockAccountAccount) CurrencyCode() (c currency.Code)               { return }
-func (a mockAccountAccount) ValidateBalance(b balance.Balance) (err error) { return }
-func (a mockAccountAccount) Equal(b account.Account) bool                  { return a.equal }
-func (a *mockAccountAccount) MarshalJSON() ([]byte, error)                 { return []byte(a.json), nil }
-
 func TestAccount_Equal(t *testing.T) {
+	a := accountingtest.NewAccount(
+		t,
+		"A",
+		accountingtest.NewCurrencyCode(t, "NEO"),
+		time.Now(),
+	)
+	b := accountingtest.NewAccount(
+		t,
+		"A",
+		accountingtest.NewCurrencyCode(t, "GBP"),
+		time.Now().Add(time.Hour),
+	)
+
 	// if account a is true, account.Account.Equal will evaluate to true
 	for _, test := range []struct {
 		a, b                       Account
@@ -41,8 +39,8 @@ func TestAccount_Equal(t *testing.T) {
 		},
 		{
 			name:         "unequal account.Account",
-			a:            Account{Account: mockAccountAccount{equal: false}},
-			b:            Account{Account: mockAccountAccount{}},
+			a:            Account{Account: *a},
+			b:            Account{Account: *b},
 			accountEqual: false,
 			equal:        false,
 		},
@@ -61,8 +59,8 @@ func TestAccount_Equal(t *testing.T) {
 		},
 		{
 			name:         "equal",
-			a:            Account{Account: mockAccountAccount{equal: true}, deletedAt: gtime.NullTime{Valid: true}},
-			b:            Account{Account: mockAccountAccount{}, deletedAt: gtime.NullTime{Valid: true}},
+			a:            Account{Account: *a, deletedAt: gtime.NullTime{Valid: true}},
+			b:            Account{Account: *a, deletedAt: gtime.NullTime{Valid: true}},
 			accountEqual: true,
 			equal:        true,
 		},
@@ -79,10 +77,10 @@ func TestAccount_Equal(t *testing.T) {
 	}
 
 	t.Run("unequal deletedAt", func(t *testing.T) {
-		a := Account{Account: mockAccountAccount{equal: true}}
-		b := Account{Account: mockAccountAccount{equal: true}, deletedAt: gtime.NullTime{Valid: true}}
+		c := Account{Account: *a}
+		d := Account{Account: *a, deletedAt: gtime.NullTime{Valid: true}}
 		var equal bool
-		equal, err := a.Equal(b)
+		equal, err := c.Equal(d)
 		assert.False(t, equal)
 		assert.Error(t, err, "accounts are equal but one has been deleted")
 	})
@@ -137,7 +135,7 @@ func TestAccount_JSONLoop(t *testing.T) {
 					Valid: true,
 					Time:  time.Date(1000, 0, 0, 0, 0, 0, 0, time.UTC),
 				},
-				Account: inner,
+				Account: *inner,
 			}
 			bs, err := json.Marshal(a)
 			common.FatalIfError(t, err, "marshalling json")

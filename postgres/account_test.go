@@ -154,8 +154,8 @@ func checkAccountsSortedByIdAscending(accounts storage.Accounts, t *testing.T) {
 		case account.ID > nextAccount.ID:
 			var message bytes.Buffer
 			fmt.Fprintf(&message, "Accounts not returned sorted by ID. ID %d appears before %d.\n", account.ID, nextAccount.ID)
-			fmt.Fprintf(&message, "accounts[%d]: %s", i, account)
-			fmt.Fprintf(&message, "accounts[%d]: %s", i+1, nextAccount)
+			fmt.Fprintf(&message, "accounts[%d]: %v", i, account)
+			fmt.Fprintf(&message, "accounts[%d]: %v", i+1, nextAccount)
 			t.Errorf(message.String())
 		}
 	}

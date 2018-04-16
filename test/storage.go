@@ -46,7 +46,7 @@ func InsertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	}
 
 	a := accountingtest.NewAccount(t, "A", accountingtest.NewCurrencyCode(t, "YEN"), time.Now())
-	insertedA, err := store.InsertAccount(a)
+	insertedA, err := store.InsertAccount(*a)
 	common.FatalIfError(t, err, "inserting account")
 
 	as = selectAccounts(t, store)
@@ -86,7 +86,7 @@ func InsertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 
 	b := accountingtest.NewAccount(t, "B", accountingtest.NewCurrencyCode(t, "EUR"), time.Now().Add(-1*time.Hour))
 
-	insertedB, err := store.InsertAccount(b)
+	insertedB, err := store.InsertAccount(*b)
 	common.FatalIfError(t, err, "inserting account")
 
 	as, err = store.SelectAccounts()

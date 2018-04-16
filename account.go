@@ -33,9 +33,6 @@ func (a Account) Equal(b Account) (bool, error) {
 	if a.ID != b.ID {
 		return false, nil
 	}
-	if a.Account == nil || b.Account == nil {
-		return false, errors.New("nil account.Account")
-	}
 	if !a.Account.Equal(b.Account) {
 		return false, nil
 	}
@@ -91,6 +88,6 @@ func (a *Account) UnmarshalJSON(data []byte) (err error) {
 	if err != nil {
 		return fmt.Errorf("error creating inner account: %v", err)
 	}
-	a.Account = inner
+	a.Account = *inner
 	return
 }
