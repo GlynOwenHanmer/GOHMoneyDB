@@ -23,15 +23,15 @@ func TestPostgres_InsertBalance_selectBalanceByID(t *testing.T) {
 		error bool
 	}{
 		{
-			Time:  a.Opened().AddDate(-1, 0, 0),
+			Time:  a.Account.Opened().AddDate(-1, 0, 0),
 			error: true,
 		},
 		{
-			Time: a.Opened(),
+			Time: a.Account.Opened(),
 			int:  -999,
 		},
 		{
-			Time: a.Opened().AddDate(1, 0, 0),
+			Time: a.Account.Opened().AddDate(1, 0, 0),
 			int:  0137,
 		},
 	} {

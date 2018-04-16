@@ -29,40 +29,36 @@ func TestAccount_Equal(t *testing.T) {
 
 	// if account a is true, account.Account.Equal will evaluate to true
 	for _, test := range []struct {
-		a, b                       Account
-		name                       string
-		equal, error, accountEqual bool
+		a, b         Account
+		name         string
+		equal, error bool
 	}{
 		{
-			name:  "both nil account",
-			error: true,
+			name:  "zero-value",
+			equal: true,
 		},
 		{
-			name:         "unequal account.Account",
-			a:            Account{Account: *a},
-			b:            Account{Account: *b},
-			accountEqual: false,
-			equal:        false,
+			name:  "unequal account.Account",
+			a:     Account{Account: *a},
+			b:     Account{Account: *b},
+			equal: false,
 		},
 		{
-			name:         "unequal ID",
-			a:            Account{ID: 1},
-			b:            Account{ID: 2},
-			accountEqual: true,
+			name: "unequal ID",
+			a:    Account{ID: 1},
+			b:    Account{ID: 2},
 		},
 		{
-			name:         "unequal deletedAt",
-			a:            Account{deletedAt: gtime.NullTime{Valid: false}},
-			b:            Account{deletedAt: gtime.NullTime{Valid: false}},
-			accountEqual: true,
-			error:        true,
+			name:  "equal deletedAt",
+			a:     Account{deletedAt: gtime.NullTime{Valid: false}},
+			b:     Account{deletedAt: gtime.NullTime{Valid: false}},
+			equal: true,
 		},
 		{
-			name:         "equal",
-			a:            Account{Account: *a, deletedAt: gtime.NullTime{Valid: true}},
-			b:            Account{Account: *a, deletedAt: gtime.NullTime{Valid: true}},
-			accountEqual: true,
-			equal:        true,
+			name:  "equal",
+			a:     Account{Account: *a, deletedAt: gtime.NullTime{Valid: true}},
+			b:     Account{Account: *a, deletedAt: gtime.NullTime{Valid: true}},
+			equal: true,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -72,7 +68,7 @@ func TestAccount_Equal(t *testing.T) {
 			} else {
 				assert.Nil(t, err)
 			}
-			assert.Equal(t, test.equal, equal)
+			assert.Equal(t, test.equal, equal, "accounts equal")
 		})
 	}
 
@@ -141,7 +137,7 @@ func TestAccount_JSONLoop(t *testing.T) {
 			common.FatalIfError(t, err, "marshalling json")
 			var actual Account
 			err = json.Unmarshal(bs, &actual)
-			common.FatalIfError(t, err, "unmarshalling json")
+			common.FatalIfErrorf(t, err, "unmarshalling json from bytes: %s", string(bs))
 			assert.Equal(t, a, actual, "intermediate stage: %s", bs)
 		})
 	}

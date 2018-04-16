@@ -160,7 +160,7 @@ func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 	}
 
 	for i := 0; i < numOfAccounts; i++ {
-		b, err := balance.New(abs[i].Opened())
+		b, err := balance.New(abs[i].Account.Account.Opened())
 		common.FatalIfError(t, err, "creating new Balance")
 		inserted, err := store.InsertBalance(abs[i].Account, *b)
 		common.FatalIfError(t, err, "inserting Balance")
@@ -174,7 +174,7 @@ func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 		assert.Len(t, *bs, 1)
 		abs[i].Balances = *bs
 
-		invalidBalance, err := balance.New(abs[i].Opened().Add(-time.Second))
+		invalidBalance, err := balance.New(abs[i].Account.Account.Opened().Add(-time.Second))
 		common.FatalIfError(t, err, "creating new invalid Balance")
 		inserted, err = store.InsertBalance(abs[i].Account, *invalidBalance)
 		if !assert.Error(t, err, "inserting Balance") {

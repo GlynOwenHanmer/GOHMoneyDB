@@ -37,12 +37,12 @@ func TestPostgres_InsertAccount(t *testing.T) {
 	for _, a := range as {
 		dba, err := store.InsertAccount(a)
 		common.FatalIfError(t, err, "inserting account")
-		assert.Equal(t, a.Name(), dba.Name())
-		assert.Equal(t, a.CurrencyCode(), dba.CurrencyCode())
-		assert.True(t, a.Opened().Sub(dba.Opened()) < time.Millisecond)
-		assert.Equal(t, a.Closed().Valid, dba.Closed().Valid)
+		assert.Equal(t, a.Name(), dba.Account.Name())
+		assert.Equal(t, a.CurrencyCode(), dba.Account.CurrencyCode())
+		assert.True(t, a.Opened().Sub(dba.Account.Opened()) < time.Millisecond)
+		assert.Equal(t, a.Closed().Valid, dba.Account.Closed().Valid)
 		if a.Closed().Valid {
-			assert.True(t, a.Closed().Time.Sub(dba.Closed().Time) < time.Millisecond)
+			assert.True(t, a.Closed().Time.Sub(dba.Account.Closed().Time) < time.Millisecond)
 		}
 	}
 	accounts, err := store.SelectAccounts()

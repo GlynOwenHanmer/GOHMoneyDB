@@ -13,8 +13,8 @@ import (
 
 // Account holds logic for an Account item that is held within a Storage
 type Account struct {
-	ID uint
-	account.Account
+	ID        uint
+	Account   account.Account
 	deletedAt gtime.NullTime
 }
 
@@ -60,7 +60,7 @@ func (a Account) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON attempts to unmarshal a json blob into an Account object, returning any errors that occur during the unmarshalling.
 func (a *Account) UnmarshalJSON(data []byte) (err error) {
-	aux := new(struct {
+	aux := &struct {
 		ID      uint
 		Account struct {
 			Name     string
@@ -69,7 +69,7 @@ func (a *Account) UnmarshalJSON(data []byte) (err error) {
 			Currency string
 		}
 		DeletedAt gtime.NullTime
-	})
+	}{}
 	err = json.Unmarshal(data, &aux)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling into auxilliary account struct: %v", err)

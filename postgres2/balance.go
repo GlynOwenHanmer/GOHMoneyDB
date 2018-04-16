@@ -87,7 +87,7 @@ func (pg postgres) selectBalanceByID(id uint) (*storage.Balance, error) {
 }
 
 func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage.Balance, error) {
-	err := a.ValidateBalance(b)
+	err := a.Account.ValidateBalance(b)
 	if err != nil {
 		return nil, errors.Wrap(err, "validating balance")
 	}
