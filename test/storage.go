@@ -32,6 +32,7 @@ func Test(t *testing.T, store storage.Storage) {
 			test.run(t, store)
 		})
 		if !success {
+			t.Fail()
 			return
 		}
 	}
