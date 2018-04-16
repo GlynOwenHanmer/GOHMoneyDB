@@ -89,16 +89,16 @@ func checkAccountsSortedByIDAscending(t *testing.T, accounts storage.Accounts) {
 	}
 }
 
-func newTestAccount(t *testing.T, options ...account.Option) account.Account {
+func newTestAccount(t *testing.T, open time.Time, options ...account.Option) account.Account {
 	c, err := currency.NewCode("EUR")
 	common.FatalIfError(t, err, "creating currency code")
-	a, err := account.New("TEST ACCOUNT", *c, time.Now(), options...)
+	a, err := account.New("TEST ACCOUNT", *c, open, options...)
 	common.FatalIfError(t, err, "creating account")
 	return *a
 }
 
-func newTestDBAccountOpen(t *testing.T, s storage.Storage) storage.Account {
-	a := newTestAccount(t)
+func newTestDBAccountOpen(t *testing.T, s storage.Storage, open time.Time) storage.Account {
+	a := newTestAccount(t, open)
 	dba, err := s.InsertAccount(a)
 	common.FatalIfError(t, err, "inserting account for testing")
 	return *dba

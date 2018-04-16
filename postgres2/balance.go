@@ -95,6 +95,8 @@ func (pg postgres) InsertBalance(a storage.Account, b balance.Balance) (*storage
 	return dbb, errors.Wrap(err, "querying Balance")
 }
 
+//DeleteBalance(a Account, b *Balance) error
+
 // TODO: check behaviour of queryBalance when 0 and 1 results are returned. Maybe it should return an error if there are non present but queryBalances should not do?
 // queryBalance returns an error if more than one result is returned from the query
 // queryBalance may or may not return an error if zero results are returned.

@@ -15,7 +15,7 @@ func TestPostgres_InsertBalance_selectBalanceByID(t *testing.T) {
 	defer deleteTestDB(t)
 	defer nonReturningCloseStorage(s)
 
-	a := newTestDBAccountOpen(t, s)
+	a := newTestDBAccountOpen(t, s, time.Now())
 
 	for i, test := range []struct {
 		time.Time
@@ -65,6 +65,33 @@ func TestPostgres_SelectAccountBalances(t *testing.T) {
 			common.FatalIfError(t, err, "inserting Balance")
 			inserted[j] = *dba
 		}
+		returned, err := store.SelectAccountBalances(*as[i])
+		common.FatalIfError(t, err, "selecting account balances")
+		for j := 0; j < i; j++ {
+			assert.Equal(t, inserted[j], (*returned)[j])
+		}
+	}
+}
+
+func TestPostgres_DeleteBalance(t *testing.T) {
+	deleteTestDBIgnorantly(t)
+	store := createTestDB(t)
+	defer deleteTestDB(t)
+	defer nonReturningCloseStorage(store)
+	count := 10
+	open := time.Date(2000, 6, 1, 1, 1, 1, 1, time.UTC)
+	a := newTestDBAccountOpen(t, store, open)
+	for i := 0; i < count; i++ {
+		numBalances := i
+		inserted := make([]storage.Balance, numBalances)
+		for j, b := range newTestBalances(t, numBalances, open, 24*time.Hour) {
+			err := balance.Amount(j)(&b) // set amount to index of balance
+			common.FatalIfError(t, err, "setting balance amount")
+			dba, err := store.InsertBalance(a, b)
+			common.FatalIfError(t, err, "inserting Balance")
+			inserted[j] = *dba
+		}
+		// Do some deleting, have a little fun
 		returned, err := store.SelectAccountBalances(*as[i])
 		common.FatalIfError(t, err, "selecting account balances")
 		for j := 0; j < i; j++ {
