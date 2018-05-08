@@ -4,11 +4,10 @@ package functional
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
-
-	"os"
 
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting-storage/postgres2"

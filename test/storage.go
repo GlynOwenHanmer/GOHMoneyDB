@@ -14,6 +14,7 @@ import (
 
 const numOfAccounts = 2
 
+// Test will run a suite of tests again a given Storage
 func Test(t *testing.T, store storage.Storage) {
 	tests := []struct {
 		title string
@@ -21,15 +22,15 @@ func Test(t *testing.T, store storage.Storage) {
 	}{
 		{
 			title: "inserting and retrieving accounts",
-			run:   InsertAndRetrieveAccounts,
+			run:   insertAndRetrieveAccounts,
 		},
 		{
 			title: "inserting balances",
-			run:   InsertAndRetrieveBalances,
+			run:   insertAndRetrieveBalances,
 		},
 		{
 			title: "update account",
-			run:   UpdateAccounts,
+			run:   updateAccounts,
 		},
 	}
 	for _, test := range tests {
@@ -43,7 +44,7 @@ func Test(t *testing.T, store storage.Storage) {
 	}
 }
 
-func InsertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
+func insertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	as, err := store.SelectAccounts()
 	common.FatalIfError(t, err, "selecting accounts")
 
@@ -144,7 +145,7 @@ func InsertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	}
 }
 
-func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
+func insertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 	as := selectAccounts(t, store)
 	assert.Len(t, *as, numOfAccounts)
 
@@ -188,7 +189,7 @@ func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 	}
 }
 
-func UpdateAccounts(t *testing.T, store storage.Storage) {
+func updateAccounts(t *testing.T, store storage.Storage) {
 	initial := accountingtest.NewAccount(t, "A", accountingtest.NewCurrencyCode(t, "YEN"), time.Now())
 
 	t.Run("valid without balances", func(t *testing.T) {
