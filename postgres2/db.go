@@ -189,12 +189,12 @@ func open(connectionString string) (*sql.DB, error) {
 }
 
 // Available returns true if the Storage is available
-func (s *postgres) Available() bool {
-	return s.db.Ping() == nil // Ping() returns an error if db  is unavailable
+func (pg *postgres) Available() bool {
+	return pg.db.Ping() == nil // Ping() returns an error if db  is unavailable
 }
 
-func (s postgres) Close() error {
-	return s.db.Close()
+func (pg postgres) Close() error {
+	return pg.db.Close()
 }
 
 func nonReturningClose(c io.Closer, name string) {
