@@ -6,6 +6,7 @@ import (
 
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting-storagetest"
+	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-accounting/balance"
 	"github.com/glynternet/go-money/common"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,10 @@ func Test(t *testing.T, store storage.Storage) {
 		{
 			title: "inserting balances",
 			run:   InsertAndRetrieveBalances,
+		},
+		{
+			title: "update account",
+			run:   UpdateAccounts,
 		},
 	}
 	for _, test := range tests {
@@ -182,6 +187,19 @@ func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 		}
 		assert.Nil(t, inserted)
 	}
+}
+
+func UpdateAccounts(t *testing.T, store storage.Storage) {
+	a := accountingtest.NewAccount(t, "A", accountingtest.NewCurrencyCode(t, "YEN"), time.Now())
+	// Here we truncate to the closest second to avoid the issue where postgres stores times down to only the closest millisecond or so
+	// TODO: Sort out rounding of times logic and document it properly. For the moment, it is assumed that accounts won't be updated and then compared against their original down to such a fine grain
+	updates := accountingtest.NewAccount(t, "B", accountingtest.NewCurrencyCode(t, "GBP"), time.Now().Truncate(time.Second), account.CloseTime(time.Now().Add(24*time.Hour).Truncate(time.Second)))
+	insertedA, err := store.InsertAccount(*a)
+	common.FatalIfError(t, err, "inserting account to store")
+	updatedA, err := store.UpdateAccount(insertedA, updates)
+	common.FatalIfError(t, err, "updating account")
+	assert.Equal(t, updatedA.ID, insertedA.ID)
+	assert.True(t, updatedA.Account.Equal(*updates), "insertedA: %+v\nupdates: %+v\nupdatedA: %+v", insertedA.Account, updates, updatedA.Account)
 }
 
 func selectAccounts(t *testing.T, store storage.Storage) *storage.Accounts {

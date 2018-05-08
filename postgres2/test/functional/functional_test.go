@@ -1,3 +1,5 @@
+// +build functional
+
 package functional
 
 import (
@@ -6,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"os"
+
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting-storage/postgres2"
 	"github.com/glynternet/go-accounting-storage/test"
 	"github.com/glynternet/go-money/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"os"
 )
 
 const (
