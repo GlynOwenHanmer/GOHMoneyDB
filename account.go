@@ -11,13 +11,14 @@ import (
 	gtime "github.com/glynternet/go-time"
 )
 
-// Account holds logic for an Account item that is held within a Storage
+// Account holds logic for an Account item that is held within a Storage.
 type Account struct {
 	ID        uint
 	Account   account.Account
 	deletedAt gtime.NullTime
 }
 
+// DeletedAt will set an account to deleted at a given time.
 func DeletedAt(t time.Time) func(*Account) error {
 	return func(a *Account) error {
 		a.deletedAt = gtime.NullTime{Valid: true, Time: t}
@@ -42,7 +43,8 @@ func (a Account) Equal(b Account) (bool, error) {
 	return true, nil
 }
 
-// MarshalJSON marshals an Account into a json blob, returning the blob with any errors that occur during the marshalling.
+// MarshalJSON marshals an Account into a json blob, returning the blob with
+// any errors that occur during the marshalling.
 func (a Account) MarshalJSON() ([]byte, error) {
 	_, err := json.Marshal(a.Account)
 	if err != nil {
@@ -58,7 +60,8 @@ func (a Account) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON attempts to unmarshal a json blob into an Account object, returning any errors that occur during the unmarshalling.
+// UnmarshalJSON attempts to unmarshal a json blob into an Account object,
+// returning any errors that occur during the unmarshalling.
 func (a *Account) UnmarshalJSON(data []byte) (err error) {
 	aux := &struct {
 		ID      uint

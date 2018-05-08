@@ -71,27 +71,13 @@ func insertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	selectedByIDA, err := store.SelectAccount(insertedA.ID)
 	common.FatalIfError(t, err, "selecting account by ID")
 
-	for _, as := range []struct {
-		A, B *storage.Account
-	}{
-		{
-			A: insertedA, B: selectedA,
-		},
-		{
-			A: insertedA, B: selectedByIDA,
-		},
-		{
-			A: selectedA, B: selectedByIDA,
-		},
-	} {
-		equal, err := as.A.Equal(*as.B)
-		common.FatalIfErrorf(t, err, "equalling accounts %+v", as)
-		if !assert.True(t, equal) {
-			t.FailNow()
-		}
-	}
+	assertThreeAccountsEqual(t, insertedA, selectedA, selectedByIDA)
 
-	b := accountingtest.NewAccount(t, "B", accountingtest.NewCurrencyCode(t, "EUR"), time.Now().Add(-1*time.Hour))
+	b := accountingtest.NewAccount(t,
+		"B",
+		accountingtest.NewCurrencyCode(t, "EUR"),
+		time.Now().Add(-1*time.Hour),
+	)
 
 	insertedB, err := store.InsertAccount(*b)
 	common.FatalIfError(t, err, "inserting account")
@@ -112,25 +98,7 @@ func insertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	selectedByIDB, err := store.SelectAccount(insertedB.ID)
 	common.FatalIfError(t, err, "selecting account by ID")
 
-	for _, as := range []struct {
-		A, B *storage.Account
-	}{
-		{
-			A: insertedB, B: selectedB,
-		},
-		{
-			A: insertedB, B: selectedByIDB,
-		},
-		{
-			A: selectedB, B: selectedByIDB,
-		},
-	} {
-		equal, err := as.A.Equal(*as.B)
-		common.FatalIfErrorf(t, err, "equalling accounts %+v", as)
-		if !assert.True(t, equal) {
-			t.FailNow()
-		}
-	}
+	assertThreeAccountsEqual(t, insertedB, selectedB, selectedByIDB)
 
 	equal, err = insertedA.Equal(*insertedB)
 	common.FatalIfError(t, err, "equaling insertedA and insertedB")
@@ -142,6 +110,30 @@ func insertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	common.FatalIfError(t, err, "equaling selectedA and selectedB")
 	if !assert.False(t, equal) {
 		t.FailNow()
+	}
+}
+
+// assertThreeAccountsEqual will compare three accounts against each other and fail the
+// test if any of them are not equal against each other.
+func assertThreeAccountsEqual(t *testing.T, a, b, c *storage.Account) {
+	for _, as := range []struct {
+		A, B *storage.Account
+	}{
+		{
+			A: a, B: b,
+		},
+		{
+			A: a, B: c,
+		},
+		{
+			A: b, B: c,
+		},
+	} {
+		equal, err := as.A.Equal(*as.B)
+		common.FatalIfErrorf(t, err, "equalling accounts %+v", as)
+		if !equal {
+			t.Fatal("not equal")
+		}
 	}
 }
 
@@ -198,7 +190,9 @@ func updateAccounts(t *testing.T, store storage.Storage) {
 
 		// Here we truncate to the closest second to avoid the issue where
 		// postgres stores times down to only the closest millisecond or so
-		// TODO: Sort out rounding of times logic and document it properly. For the moment, it is assumed that accounts won't be updated and then compared against their original down to such a fine grain
+		// TODO: Sort out rounding of times logic and document it properly. For
+		// TODO: the moment, it is assumed that accounts won't be updated and
+		// TODO: then compared against their original down to such a fine grain
 		updates := accountingtest.NewAccount(t,
 			"B",
 			accountingtest.NewCurrencyCode(t, "GBP"),
@@ -209,7 +203,10 @@ func updateAccounts(t *testing.T, store storage.Storage) {
 		updatedA, err := store.UpdateAccount(inserted, updates)
 		common.FatalIfError(t, err, "updating account")
 		assert.Equal(t, updatedA.ID, inserted.ID)
-		assert.True(t, updatedA.Account.Equal(*updates), "inserted: %+v\nupdates: %+v\nupdatedA: %+v", inserted.Account, updates, updatedA.Account)
+		assert.True(t,
+			updatedA.Account.Equal(*updates),
+			"inserted: %+v\nupdates: %+v\nupdatedA: %+v", inserted.Account, updates, updatedA.Account,
+		)
 	})
 
 	t.Run("valid with balances", func(t *testing.T) {
@@ -223,7 +220,9 @@ func updateAccounts(t *testing.T, store storage.Storage) {
 
 		// Here we truncate to the closest second to avoid the issue where
 		// postgres stores times down to only the closest millisecond or so
-		// TODO: Sort out rounding of times logic and document it properly. For the moment, it is assumed that accounts won't be updated and then compared against their original down to such a fine grain
+		// TODO: Sort out rounding of times logic and document it properly. For
+		// TODO: the moment, it is assumed that accounts won't be updated and
+		// TODO: then compared against their original down to such a fine grain
 		updates := accountingtest.NewAccount(t,
 			"B",
 			accountingtest.NewCurrencyCode(t, "GBP"),
@@ -234,7 +233,11 @@ func updateAccounts(t *testing.T, store storage.Storage) {
 		updatedA, err := store.UpdateAccount(inserted, updates)
 		common.FatalIfError(t, err, "updating account")
 		assert.Equal(t, updatedA.ID, inserted.ID)
-		assert.True(t, updatedA.Account.Equal(*updates), "inserted: %+v\nupdates: %+v\nupdatedA: %+v", inserted.Account, updates, updatedA.Account)
+		assert.True(t,
+			updatedA.Account.Equal(*updates),
+			"inserted: %+v\nupdates: %+v\nupdatedA: %+v",
+			inserted.Account, updates, updatedA.Account,
+		)
 	})
 
 	t.Run("invalid with balances", func(t *testing.T) {
@@ -248,7 +251,9 @@ func updateAccounts(t *testing.T, store storage.Storage) {
 
 		// Here we truncate to the closest second to avoid the issue where
 		// postgres stores times down to only the closest millisecond or so
-		// TODO: Sort out rounding of times logic and document it properly. For the moment, it is assumed that accounts won't be updated and then compared against their original down to such a fine grain
+		// TODO: Sort out rounding of times logic and document it properly. For
+		// TODO: the moment, it is assumed that accounts won't be updated and
+		// TODO: then compared against their original down to such a fine grain
 		updates := accountingtest.NewAccount(t,
 			"B",
 			accountingtest.NewCurrencyCode(t, "GBP"),
@@ -274,10 +279,12 @@ func newTestBalance(t *testing.T, time time.Time, os ...balance.Option) balance.
 	return *b
 }
 
-func newTestBalances(t *testing.T, count int, startTime time.Time, interval time.Duration, os ...balance.Option) []balance.Balance {
+func newTestBalances(
+	t *testing.T, count int, start time.Time, interval time.Duration, os ...balance.Option,
+) []balance.Balance {
 	bs := make([]balance.Balance, count)
 	for i := 0; i < count; i++ {
-		bs[i] = newTestBalance(t, startTime.Add(time.Duration(i)*interval), os...)
+		bs[i] = newTestBalance(t, start.Add(time.Duration(i)*interval), os...)
 	}
 	return bs
 }
