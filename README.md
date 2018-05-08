@@ -1,2 +1,3 @@
-# go-moneypostgres
-A go package to interact with a go-money database for tracking money-based accounts
+# go-accounting-storage
+
+Here is an out of date README
