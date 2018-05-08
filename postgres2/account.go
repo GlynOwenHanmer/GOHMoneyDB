@@ -93,6 +93,16 @@ func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
 // account data. The updates will be verified to ensure that any data to be
 // used will be logically sound with the balances and other account details.
 func (pg postgres) UpdateAccount(a *storage.Account, updates *account.Account) (*storage.Account, error) {
+	bs, err := pg.SelectAccountBalances(*a)
+	if err != nil {
+		return nil, errors.Wrap(err, "selecting Account Balances for update validation")
+	}
+	for _, b := range *bs {
+		err := updates.ValidateBalance(b.Balance)
+		if err != nil {
+			return nil, fmt.Errorf("update would make balance invalid: %v", err)
+		}
+	}
 	dba, err := queryAccount(
 		pg.db,
 		queryUpdateAccount,
