@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/glynternet/go-accounting-storagetest"
 	"github.com/glynternet/go-accounting/account"
+	"github.com/glynternet/go-accounting/accountingtest"
 	"github.com/glynternet/go-money/common"
 	"github.com/glynternet/go-money/currency"
 	gtime "github.com/glynternet/go-time"
