@@ -6,6 +6,7 @@ import (
 
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting-storagetest"
+	"github.com/glynternet/go-accounting/account"
 	"github.com/glynternet/go-accounting/balance"
 	"github.com/glynternet/go-money/common"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 
 const numOfAccounts = 2
 
+// Test will run a suite of tests again a given Storage
 func Test(t *testing.T, store storage.Storage) {
 	tests := []struct {
 		title string
@@ -20,11 +22,15 @@ func Test(t *testing.T, store storage.Storage) {
 	}{
 		{
 			title: "inserting and retrieving accounts",
-			run:   InsertAndRetrieveAccounts,
+			run:   insertAndRetrieveAccounts,
 		},
 		{
 			title: "inserting balances",
-			run:   InsertAndRetrieveBalances,
+			run:   insertAndRetrieveBalances,
+		},
+		{
+			title: "update account",
+			run:   updateAccounts,
 		},
 	}
 	for _, test := range tests {
@@ -38,7 +44,7 @@ func Test(t *testing.T, store storage.Storage) {
 	}
 }
 
-func InsertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
+func insertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	as, err := store.SelectAccounts()
 	common.FatalIfError(t, err, "selecting accounts")
 
@@ -139,7 +145,7 @@ func InsertAndRetrieveAccounts(t *testing.T, store storage.Storage) {
 	}
 }
 
-func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
+func insertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 	as := selectAccounts(t, store)
 	assert.Len(t, *as, numOfAccounts)
 
@@ -160,9 +166,8 @@ func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 	}
 
 	for i := 0; i < numOfAccounts; i++ {
-		b, err := balance.New(abs[i].Account.Account.Opened())
-		common.FatalIfError(t, err, "creating new Balance")
-		inserted, err := store.InsertBalance(abs[i].Account, *b)
+		b := newTestBalance(t, abs[i].Account.Account.Opened())
+		inserted, err := store.InsertBalance(abs[i].Account, b)
 		common.FatalIfError(t, err, "inserting Balance")
 		equal := b.Equal(inserted.Balance)
 		if !assert.True(t, equal) {
@@ -184,8 +189,95 @@ func InsertAndRetrieveBalances(t *testing.T, store storage.Storage) {
 	}
 }
 
+func updateAccounts(t *testing.T, store storage.Storage) {
+	initial := accountingtest.NewAccount(t, "A", accountingtest.NewCurrencyCode(t, "YEN"), time.Now())
+
+	t.Run("valid without balances", func(t *testing.T) {
+		inserted, err := store.InsertAccount(*initial)
+		common.FatalIfError(t, err, "inserting account to store")
+
+		// Here we truncate to the closest second to avoid the issue where
+		// postgres stores times down to only the closest millisecond or so
+		// TODO: Sort out rounding of times logic and document it properly. For the moment, it is assumed that accounts won't be updated and then compared against their original down to such a fine grain
+		updates := accountingtest.NewAccount(t,
+			"B",
+			accountingtest.NewCurrencyCode(t, "GBP"),
+			time.Now().Truncate(time.Second),
+			account.CloseTime(time.Now().Add(24*time.Hour).Truncate(time.Second)),
+		)
+
+		updatedA, err := store.UpdateAccount(inserted, updates)
+		common.FatalIfError(t, err, "updating account")
+		assert.Equal(t, updatedA.ID, inserted.ID)
+		assert.True(t, updatedA.Account.Equal(*updates), "inserted: %+v\nupdates: %+v\nupdatedA: %+v", inserted.Account, updates, updatedA.Account)
+	})
+
+	t.Run("valid with balances", func(t *testing.T) {
+		inserted, err := store.InsertAccount(*initial)
+		common.FatalIfError(t, err, "inserting account to store")
+
+		for _, b := range newTestBalances(t, 10, inserted.Account.Opened(), time.Hour) {
+			_, err := store.InsertBalance(*inserted, b)
+			common.FatalIfError(t, err, "inserting balance")
+		}
+
+		// Here we truncate to the closest second to avoid the issue where
+		// postgres stores times down to only the closest millisecond or so
+		// TODO: Sort out rounding of times logic and document it properly. For the moment, it is assumed that accounts won't be updated and then compared against their original down to such a fine grain
+		updates := accountingtest.NewAccount(t,
+			"B",
+			accountingtest.NewCurrencyCode(t, "GBP"),
+			time.Now().Add(-time.Hour).Truncate(time.Second),
+			account.CloseTime(time.Now().Add(200*time.Hour).Truncate(time.Second)),
+		)
+
+		updatedA, err := store.UpdateAccount(inserted, updates)
+		common.FatalIfError(t, err, "updating account")
+		assert.Equal(t, updatedA.ID, inserted.ID)
+		assert.True(t, updatedA.Account.Equal(*updates), "inserted: %+v\nupdates: %+v\nupdatedA: %+v", inserted.Account, updates, updatedA.Account)
+	})
+
+	t.Run("invalid with balances", func(t *testing.T) {
+		inserted, err := store.InsertAccount(*initial)
+		common.FatalIfError(t, err, "inserting account to store")
+
+		for _, b := range newTestBalances(t, 10, inserted.Account.Opened(), time.Hour) {
+			_, err := store.InsertBalance(*inserted, b)
+			common.FatalIfError(t, err, "inserting balance")
+		}
+
+		// Here we truncate to the closest second to avoid the issue where
+		// postgres stores times down to only the closest millisecond or so
+		// TODO: Sort out rounding of times logic and document it properly. For the moment, it is assumed that accounts won't be updated and then compared against their original down to such a fine grain
+		updates := accountingtest.NewAccount(t,
+			"B",
+			accountingtest.NewCurrencyCode(t, "GBP"),
+			time.Now().Add(-time.Hour).Truncate(time.Second),
+			account.CloseTime(time.Now().Add(time.Hour).Truncate(time.Second)),
+		)
+
+		updatedA, err := store.UpdateAccount(inserted, updates)
+		assert.Error(t, err)
+		assert.Nil(t, updatedA)
+	})
+}
+
 func selectAccounts(t *testing.T, store storage.Storage) *storage.Accounts {
 	as, err := store.SelectAccounts()
 	common.FatalIfError(t, err, "selecting accounts after inserting one")
 	return as
+}
+
+func newTestBalance(t *testing.T, time time.Time, os ...balance.Option) balance.Balance {
+	b, err := balance.New(time, os...)
+	common.FatalIfError(t, err, "creating test balance")
+	return *b
+}
+
+func newTestBalances(t *testing.T, count int, startTime time.Time, interval time.Duration, os ...balance.Option) []balance.Balance {
+	bs := make([]balance.Balance, count)
+	for i := 0; i < count; i++ {
+		bs[i] = newTestBalance(t, startTime.Add(time.Duration(i)*interval), os...)
+	}
+	return bs
 }

@@ -54,25 +54,64 @@ var (
 		fieldDeleted)
 
 	queryInsertAccount = fmt.Sprintf(
-		`INSERT INTO accounts (%s) VALUES ($1, $2, $3, $4) returning %s`,
+		`INSERT INTO %s (%s) VALUES ($1, $2, $3, $4) returning %s`,
+		table,
 		fieldsInsert,
+		fieldsSelect)
+
+	queryUpdateAccount = fmt.Sprintf(
+		`UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4 WHERE %s = $5 returning %s`,
+		table,
+		fieldName,
+		fieldOpened,
+		fieldClosed,
+		fieldCurrency,
+		fieldID,
 		fieldsSelect)
 )
 
-// SelectAccounts returns an Accounts item holding all Account entries within the given database along with any errors that occurred whilst attempting to retrieve the Accounts.
+// SelectAccounts returns an Accounts item holding all Account entries within
+// the given database along with any errors that occurred whilst attempting to
+// retrieve the Accounts.
 func (pg postgres) SelectAccounts() (*storage.Accounts, error) {
 	return queryAccounts(pg.db, querySelectAccounts)
 }
 
-// SelectAccount returns an Account with the given id
+// SelectAccount returns an Account with the given id.
 func (pg postgres) SelectAccount(id uint) (*storage.Account, error) {
-	return queryAccount(pg.db, querySelectAccount, id)
+	dba, err := queryAccount(pg.db, querySelectAccount, id)
+	return dba, errors.Wrap(err, "querying Account")
 }
 
 // InsertAccount inserts an account.Account in the storage backend and returns it.
-// InsertAccount rounds time to the nearest millisecond to avoid any discrepancies when it comes to how accurate the DB can store a time
 func (pg postgres) InsertAccount(a account.Account) (*storage.Account, error) {
 	dba, err := queryAccount(pg.db, queryInsertAccount, a.Name(), a.Opened(), pq.NullTime(a.Closed()), a.CurrencyCode())
+	return dba, errors.Wrap(err, "querying Account")
+}
+
+// UpdateAccount updates a stored account to reflect the details of some other
+// account data. The updates will be verified to ensure that any data to be
+// used will be logically sound with the balances and other account details.
+func (pg postgres) UpdateAccount(a *storage.Account, updates *account.Account) (*storage.Account, error) {
+	bs, err := pg.SelectAccountBalances(*a)
+	if err != nil {
+		return nil, errors.Wrap(err, "selecting Account Balances for update validation")
+	}
+	for _, b := range *bs {
+		err := updates.ValidateBalance(b.Balance)
+		if err != nil {
+			return nil, fmt.Errorf("update would make balance invalid: %v", err)
+		}
+	}
+	dba, err := queryAccount(
+		pg.db,
+		queryUpdateAccount,
+		updates.Name(),
+		updates.Opened(),
+		pq.NullTime(updates.Closed()),
+		updates.CurrencyCode(),
+		a.ID,
+	)
 	return dba, errors.Wrap(err, "querying Account")
 }
 
@@ -100,7 +139,8 @@ func queryAccounts(db *sql.DB, queryString string, values ...interface{}) (*stor
 	return scanRowsForAccounts(rows)
 }
 
-// scanRowsForAccounts scans an sql.Rows object for go-moneypostgres.Accounts objects and returns then along with any error that occurs whilst attempting to scan.
+// scanRowsForAccounts scans an sql.Rows object for storage.Accounts objects
+// and returns then along with any error that occurs whilst attempting to scan.
 func scanRowsForAccounts(rows *sql.Rows) (*storage.Accounts, error) {
 	var openAccounts storage.Accounts
 	for rows.Next() {

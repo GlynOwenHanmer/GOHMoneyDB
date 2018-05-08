@@ -11,8 +11,8 @@ type Storage interface {
 	Close() error
 	InsertAccount(a account.Account) (*Account, error)
 	SelectAccount(u uint) (*Account, error)
+	UpdateAccount(a *Account, updates *account.Account) (*Account, error)
 	SelectAccounts() (*Accounts, error)
-	//UpdateAccount(a *Account, us account.Account) error
 	//DeleteAccount(a *Account) error
 	//
 	InsertBalance(a Account, b balance.Balance) (*Balance, error)

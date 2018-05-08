@@ -1,7 +1,10 @@
+// +build functional
+
 package functional
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -12,7 +15,6 @@ import (
 	"github.com/glynternet/go-money/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"os"
 )
 
 const (

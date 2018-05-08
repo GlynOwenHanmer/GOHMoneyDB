@@ -1,3 +1,5 @@
+// +build integration
+
 package postgres2
 
 import (
