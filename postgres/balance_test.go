@@ -3,12 +3,14 @@
 package postgres
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/glynternet/go-accounting-storage"
 	"github.com/glynternet/go-accounting/balance"
 	"github.com/glynternet/go-money/common"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,6 +50,15 @@ func TestPostgres_InsertBalance_selectBalanceByID(t *testing.T) {
 		common.FatalIfError(t, err, "selecting balance to check against inserted")
 		assert.Equal(t, dbb, dbbb)
 	}
+}
+
+// TODO: Add selectBalanceByID to features
+func (pg postgres) selectBalanceByID(id uint) (*storage.Balance, error) {
+	b, err := queryBalance(pg.db, fmt.Sprintf(
+		`%s%s = $1;`,
+		balancesSelectPrefix,
+		balancesFieldID), id)
+	return b, errors.Wrap(err, "querying balance")
 }
 
 func TestPostgres_SelectAccountBalances(t *testing.T) {

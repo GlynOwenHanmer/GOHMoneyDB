@@ -125,3 +125,7 @@ func adminConnectionString(t *testing.T) string {
 	common.FatalIfError(t, err, "generating new admin connection string")
 	return cs
 }
+
+func nonReturningCloseStorage(s storage.Storage) {
+	nonReturningClose(s, "Storage")
+}

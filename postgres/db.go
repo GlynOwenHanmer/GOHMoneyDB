@@ -8,20 +8,18 @@ import (
 	"log"
 	"strings"
 
-	"github.com/glynternet/go-accounting-storage"
 	"github.com/pkg/errors"
 )
 
-const driver = "postgres"
-
 // TODO: error wrapping and some refactoring in here
 
-// New returns a connection to a postgres Storage using the given connection string along with any errors that occur whilst attempting to open the connection.
-func New(connectionString string) (s *postgres, err error) {
-	var db *sql.DB
-	db, err = open(connectionString)
+// New returns a connection to a postgres Storage using the given connection
+// string along with any errors that occur whilst attempting to open the
+// connection.
+func New(connectionString string) (*postgres, error) {
+	db, err := open(connectionString)
 	if err != nil {
-		return
+		return nil, errors.Wrap(err, "opening connection to backend")
 	}
 	return &postgres{db: db}, nil
 }
@@ -79,6 +77,8 @@ func (w *failSafeWriter) writef(format string, args ...interface{}) {
 	_, w.error = w.Writer.Write(bs)
 }
 
+// CreateStorage will create all the necessary tables to use postgres as a
+// backend.
 func CreateStorage(host, user, dbname, sslmode string) error {
 	adminConnect, err := NewConnectionString(host, user, "", sslmode)
 	if err != nil {
@@ -117,7 +117,10 @@ func createDatabase(connection, name, owner string) error {
 	w := failSafeWriter{Writer: q}
 	w.writef("CREATE DATABASE %s ", name)
 	w.writef("WITH OWNER = %s ", owner)
-	w.writef("ENCODING = 'UTF8' TABLESPACE = pg_default LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8' CONNECTION LIMIT = 10  TEMPLATE = template0;")
+	w.writef(
+		"ENCODING = 'UTF8' TABLESPACE = pg_default LC_COLLATE = 'en_GB.UTF-8' " +
+			"LC_CTYPE = 'en_GB.UTF-8' CONNECTION LIMIT = 10  TEMPLATE = template0;",
+	)
 	if w.error != nil {
 		return w.error
 	}
@@ -166,6 +169,7 @@ func createBalancesTable(connection string) error {
 	return errors.Wrap(err, "executing create Balances query")
 }
 
+// DeleteStorage deletes the database used for the backend.
 func DeleteStorage(host, user, name, sslmode string) error {
 	if len(strings.TrimSpace(name)) == 0 {
 		return errors.New("storage name must be non-whitespace and longer than 0 characters")
@@ -184,7 +188,7 @@ func DeleteStorage(host, user, name, sslmode string) error {
 }
 
 func open(connectionString string) (*sql.DB, error) {
-	db, err := sql.Open(driver, connectionString)
+	db, err := sql.Open("postgres", connectionString)
 	return db, err
 }
 
@@ -218,8 +222,4 @@ func nonReturningCloseDB(db *sql.DB) {
 
 func nonReturningCloseRows(rows *sql.Rows) {
 	nonReturningClose(rows, "Rows")
-}
-
-func nonReturningCloseStorage(s storage.Storage) {
-	nonReturningClose(s, "Storage")
 }
