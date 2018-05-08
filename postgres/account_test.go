@@ -1,6 +1,6 @@
 // +build integration
 
-package postgres2
+package postgres
 
 import (
 	"bytes"

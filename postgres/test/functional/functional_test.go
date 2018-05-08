@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/glynternet/go-accounting-storage"
-	"github.com/glynternet/go-accounting-storage/postgres2"
+	"github.com/glynternet/go-accounting-storage/postgres"
 	"github.com/glynternet/go-accounting-storage/test"
 	"github.com/glynternet/go-money/common"
 	"github.com/spf13/viper"
@@ -36,7 +36,7 @@ func setup() {
 	errs := make([]error, retries)
 	var i int
 	for i = 0; i < retries; i++ {
-		err := postgres2.CreateStorage(
+		err := postgres.CreateStorage(
 			viper.GetString(keyDBHost),
 			viper.GetString(keyDBUser),
 			viper.GetString(keyDBName),
@@ -62,14 +62,14 @@ func TestSuite(t *testing.T) {
 }
 
 func createStorage(t *testing.T) storage.Storage {
-	cs, err := postgres2.NewConnectionString(
+	cs, err := postgres.NewConnectionString(
 		viper.GetString(keyDBHost),
 		viper.GetString(keyDBUser),
 		viper.GetString(keyDBName),
 		viper.GetString(keyDBSSLMode),
 	)
 	common.FatalIfError(t, err, "creating connection string")
-	store, err := postgres2.New(cs)
+	store, err := postgres.New(cs)
 	common.FatalIfError(t, err, "creating storage")
 	if !assert.True(t, store.Available(), "store should be available") {
 		t.FailNow()
