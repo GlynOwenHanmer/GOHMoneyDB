@@ -1,3 +1,3 @@
-# go-accounting-storage
+## DECPRECATED
 
-Here is an out of date README
+All of this repository was moved to [here](https://github.com/glynternet/mon)
